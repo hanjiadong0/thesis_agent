@@ -55,8 +55,16 @@ class Settings(BaseSettings):
     DAILY_EMAIL_ENABLED: bool = True
     
     # AI Settings
-    AI_PROVIDER: str = "gemini"  # Options: "gemini", "groq", "openai"
-    AI_MODEL: str = "gemini-1.5-flash"
+    AI_PROVIDER: str = "ollama"  # Options: "gemini", "ollama" - Default is Ollama (local)
+    
+    # Gemini Settings
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    
+    # Ollama Settings (local Llama)
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.2"  # Updated to use available model
+    
+    # Common AI Settings
     AI_TEMPERATURE: float = 0.7
     AI_MAX_TOKENS: int = 1000
     
@@ -152,13 +160,24 @@ def get_ai_config() -> dict:
     Returns:
         dict: AI configuration dictionary
     """
-    return {
+    config = {
         "provider": settings.AI_PROVIDER,
-        "model": settings.AI_MODEL,
         "temperature": settings.AI_TEMPERATURE,
         "max_tokens": settings.AI_MAX_TOKENS,
-        "api_key": settings.GEMINI_API_KEY,
     }
+    
+    if settings.AI_PROVIDER == "gemini":
+        config.update({
+            "model": settings.GEMINI_MODEL,
+            "api_key": settings.GEMINI_API_KEY,
+        })
+    elif settings.AI_PROVIDER == "ollama":
+        config.update({
+            "model": settings.OLLAMA_MODEL,
+            "base_url": settings.OLLAMA_BASE_URL,
+        })
+    
+    return config
 
 
 def is_development() -> bool:

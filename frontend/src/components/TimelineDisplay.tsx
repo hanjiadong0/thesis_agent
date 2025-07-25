@@ -1,33 +1,47 @@
-import React, { useState } from 'react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
+  Target, 
+  ChevronDown, 
+  ChevronUp, 
   CheckCircle, 
   Circle, 
   AlertCircle, 
-  Target,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  Edit,
-  Mail,
+  Mail, 
   FileText,
-  ExternalLink
+  Play,
+  CheckSquare,
+  User,
+  ArrowLeft
 } from 'lucide-react';
-import { TimelineData, TimelineResponse, apiService } from '../services/api';
+import { format, parseISO, isToday, isBefore, isAfter } from 'date-fns';
+import { TimelineData, TimelineResponse, TimelineTask, apiService } from '../services/api';
+import TaskChat from './TaskChat';
 
 interface TimelineDisplayProps {
   timelineData: TimelineResponse;
   onEmailTest?: () => void;
   userQuestionnaireData?: any;
+  onBack?: () => void;
+  currentProjectId?: number; // Add project ID prop
+  existingNotionWorkspace?: any; // Add existing workspace prop
 }
 
-export default function TimelineDisplay({ timelineData, onEmailTest, userQuestionnaireData }: TimelineDisplayProps) {
+export default function TimelineDisplay({ 
+  timelineData, 
+  onEmailTest, 
+  userQuestionnaireData, 
+  onBack, 
+  currentProjectId,
+  existingNotionWorkspace 
+}: TimelineDisplayProps) {
   const [expandedPhases, setExpandedPhases] = useState<Set<number>>(new Set([0]));
-  const [notionWorkspace, setNotionWorkspace] = useState<any>(null);
+  const [notionWorkspace, setNotionWorkspace] = useState<any>(existingNotionWorkspace || null);
   const [loadingNotion, setLoadingNotion] = useState(false);
   const [loadingEmail, setLoadingEmail] = useState(false);
+  const [currentTask, setCurrentTask] = useState<TimelineTask | null>(null);
+  const [showTaskChat, setShowTaskChat] = useState(false);
   
   const togglePhase = (index: number) => {
     const newExpanded = new Set(expandedPhases);
@@ -46,24 +60,22 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
   const today = new Date();
   const getTaskStatus = (dueDate: string) => {
     const due = parseISO(dueDate);
-    const daysDiff = differenceInDays(due, today);
-    
-    if (daysDiff < 0) return 'overdue';
-    if (daysDiff === 0) return 'today';
-    if (daysDiff <= 7) return 'upcoming';
-    return 'future';
+    if (due < today) return 'overdue';
+    if (isToday(due)) return 'today';
+    if (isBefore(due, today)) return 'upcoming';
+    return 'current';
   };
 
   const getPhaseStatus = (startDate: string, endDate: string) => {
     const start = parseISO(startDate);
     const end = parseISO(endDate);
     
-    if (today < start) return 'future';
-    if (today > end) return 'completed';
+    if (isBefore(today, start)) return 'future';
+    if (isAfter(today, end)) return 'completed';
     return 'current';
   };
 
-  const handleCreateNotionWorkspace = async () => {
+  const handleCreateAndSyncNotion = async () => {
     if (!userQuestionnaireData) {
       alert('❌ User data required for creating Notion workspace');
       return;
@@ -71,43 +83,41 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
 
     setLoadingNotion(true);
     try {
-      const response = await apiService.createNotionWorkspace(userQuestionnaireData);
-      if (response.success) {
-        setNotionWorkspace(response.workspace);
-        alert('✅ Notion workspace created successfully!');
+      // Create Notion workspace with correct data structure
+      const workspaceData = {
+        user_name: userQuestionnaireData.name || timelineData.user_info.name,
+        thesis_topic: userQuestionnaireData.thesis_topic || timelineData.user_info.thesis_topic,
+        thesis_description: userQuestionnaireData.thesis_description || 'AI-generated thesis project',
+        project_id: currentProjectId
+      };
+      
+      const workspaceResponse = await apiService.createNotionWorkspace(workspaceData);
+      
+      if (workspaceResponse.success) {
+        setNotionWorkspace(workspaceResponse);
+        
+        // Automatically sync timeline data
+        const syncResponse = await apiService.syncTimelineToNotion(
+          timelineData.timeline.timeline,
+          workspaceResponse,
+          {
+            user_name: userQuestionnaireData.name || timelineData.user_info.name,
+            thesis_topic: userQuestionnaireData.thesis_topic || timelineData.user_info.thesis_topic,
+            project_id: currentProjectId
+          }
+        );
+        
+        if (syncResponse.success) {
+          alert('✅ Notion workspace created and timeline synced successfully!');
+        } else {
+          alert('✅ Notion workspace created, but timeline sync failed. You can try syncing again.');
+        }
       } else {
         alert('❌ Failed to create Notion workspace');
       }
     } catch (error) {
       console.error('Notion workspace creation failed:', error);
       alert('❌ Failed to create Notion workspace');
-    } finally {
-      setLoadingNotion(false);
-    }
-  };
-
-  const handleSyncToNotion = async () => {
-    if (!notionWorkspace) {
-      alert('❌ Please create a Notion workspace first');
-      return;
-    }
-
-    setLoadingNotion(true);
-    try {
-      const response = await apiService.syncTimelineToNotion(
-        timelineData.timeline.timeline,
-        notionWorkspace,
-        timelineData.user_info
-      );
-      
-      if (response.success) {
-        alert(`✅ Timeline synced! ${response.sync_result.milestones_synced} milestones and ${response.sync_result.tasks_synced} tasks synced to Notion.`);
-      } else {
-        alert('❌ Failed to sync timeline to Notion');
-      }
-    } catch (error) {
-      console.error('Notion sync failed:', error);
-      alert('❌ Failed to sync timeline to Notion');
     } finally {
       setLoadingNotion(false);
     }
@@ -139,70 +149,128 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
     }
   };
 
+  const handleStartWorking = (task: TimelineTask) => {
+    setCurrentTask(task);
+    setShowTaskChat(true);
+  };
+
+  const handleTaskComplete = (deliverable: string) => {
+    // Mark task as completed and save deliverable
+    console.log('Task completed with deliverable:', deliverable);
+    setShowTaskChat(false);
+    setCurrentTask(null);
+    // TODO: Update task status in backend
+  };
+
+  const handleBackFromTask = () => {
+    setShowTaskChat(false);
+    setCurrentTask(null);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Header */}
+      {/* Today's Tasks Section - Prominent at top */}
+      {timelineData.timeline.timeline.todays_tasks && timelineData.timeline.timeline.todays_tasks.length > 0 && (
+        <div className="card border-l-4 border-l-primary-600 bg-gradient-to-r from-primary-50 to-primary-25">
+          <div className="card-header">
+            <h2 className="text-xl font-bold text-primary-900 flex items-center">
+              <CheckSquare className="h-6 w-6 mr-2 text-primary-600" />
+              Today's Tasks ({new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })})
+            </h2>
+            <p className="text-sm text-primary-700 mt-1">Focus on these tasks today to stay on track</p>
+          </div>
+          
+          <div className="space-y-4">
+            {timelineData.timeline.timeline.todays_tasks.map((task: TimelineTask, index: number) => (
+              <div key={index} className="p-4 bg-white rounded-lg border border-primary-200 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        {index + 1}
+                      </div>
+                      <h3 className="font-semibold text-secondary-900">{task.title}</h3>
+                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
+                        Priority {task.priority}
+                      </span>
+                    </div>
+                    
+                    <p className="text-sm text-secondary-600 mb-3 ml-11">{task.description}</p>
+                    
+                    <div className="flex items-center space-x-4 ml-11 text-sm text-secondary-500">
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {task.estimated_hours}h ({task.focus_sessions || Math.ceil(task.estimated_hours * 2)} × {Math.floor((task.estimated_hours / (task.focus_sessions || Math.ceil(task.estimated_hours * 2))) * 60)}min sessions)
+                      </div>
+                      {task.deliverable && (
+                        <div className="flex items-center">
+                          <Target className="h-4 w-4 mr-1" />
+                          {task.deliverable}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={() => handleStartWorking(task)}
+                    className="btn-primary flex items-center space-x-2 ml-4"
+                  >
+                    <Play className="h-4 w-4" />
+                    <span>Start Working</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {timelineData.timeline.timeline.todays_tasks.length === 0 && (
+            <div className="text-center py-8 text-secondary-500">
+              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-success-500" />
+              <p className="font-medium">No tasks scheduled for today!</p>
+              <p className="text-sm">Great job staying on track, or check upcoming tasks.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action Buttons */}
       <div className="card">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-secondary-900 mb-2">
-              Your AI-Generated Timeline
-            </h1>
-            <p className="text-secondary-600 mb-4">
-              {timelineData.user_info.thesis_topic} • {timelineData.user_info.name}
-            </p>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <User className="h-5 w-5 text-secondary-600" />
+            <span className="font-medium text-secondary-900">{timelineData.user_info.name}</span>
+            <span className="text-secondary-500">•</span>
+            <span className="text-secondary-600">{timelineData.user_info.thesis_topic}</span>
           </div>
           
           <div className="flex flex-wrap gap-3">
-            <button className="btn-secondary flex items-center">
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </button>
-            <button className="btn-secondary flex items-center">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Timeline
+            <button 
+              onClick={onBack}
+              className="btn-secondary flex items-center"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Projects
             </button>
             
-            {/* Notion Integration Buttons */}
-            {!notionWorkspace ? (
+            <button 
+              onClick={handleCreateAndSyncNotion}
+              disabled={loadingNotion}
+              className="btn-accent flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              {loadingNotion ? 'Creating...' : (notionWorkspace ? 'Sync to Notion' : 'Create Notion Workspace')}
+            </button>
+            
+            {timelineData.timeline.timeline.daily_assignments && (
               <button 
-                onClick={handleCreateNotionWorkspace}
-                disabled={loadingNotion}
-                className="btn-outline flex items-center disabled:opacity-50"
+                onClick={onEmailTest}
+                disabled={loadingEmail}
+                className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <FileText className="h-4 w-4 mr-2" />
-                {loadingNotion ? 'Creating...' : 'Create Notion Workspace'}
+                <Mail className="h-4 w-4 mr-2" />
+                {loadingEmail ? 'Sending...' : 'Send Progress Email'}
               </button>
-            ) : (
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleSyncToNotion}
-                  disabled={loadingNotion}
-                  className="btn-primary flex items-center disabled:opacity-50"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {loadingNotion ? 'Syncing...' : 'Sync to Notion'}
-                </button>
-                <a 
-                  href={notionWorkspace.main_page.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary flex items-center"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open in Notion
-                </a>
-              </div>
             )}
-            
-                            <button 
-                  onClick={handleEmailTestWithNotion} 
-                  disabled={loadingEmail}
-                  className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  {loadingEmail ? 'Sending...' : 'Send Email'}
-                </button>
           </div>
         </div>
 
@@ -216,7 +284,15 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
               </div>
               <div className="flex gap-2">
                 <a 
-                  href={notionWorkspace.task_database.url}
+                  href={notionWorkspace.main_page?.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-success-600 hover:text-success-800 text-sm"
+                >
+                  📄 Main Page
+                </a>
+                <a 
+                  href={notionWorkspace.task_database?.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-success-600 hover:text-success-800 text-sm"
@@ -224,20 +300,12 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
                   📊 Tasks
                 </a>
                 <a 
-                  href={notionWorkspace.milestone_database.url}
+                  href={notionWorkspace.milestone_database?.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-success-600 hover:text-success-800 text-sm"
                 >
                   🎯 Milestones
-                </a>
-                <a 
-                  href={notionWorkspace.progress_page.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-success-600 hover:text-success-800 text-sm"
-                >
-                  📈 Progress
                 </a>
               </div>
             </div>
@@ -248,31 +316,29 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
       {/* Timeline Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="card text-center">
-          <div className="text-2xl font-bold text-primary-600 mb-2">
-            {metadata.total_days}
-          </div>
-          <div className="text-sm text-secondary-600">Total Days</div>
+          <div className="text-2xl font-bold text-primary-600">{timeline.phases.length}</div>
+          <p className="text-sm text-secondary-600">Phases</p>
         </div>
         
         <div className="card text-center">
-          <div className="text-2xl font-bold text-success-600 mb-2">
-            {metadata.working_days}
+          <div className="text-2xl font-bold text-accent-600">
+            {timeline.phases.reduce((total, phase) => total + phase.tasks.length, 0)}
           </div>
-          <div className="text-sm text-secondary-600">Working Days</div>
+          <p className="text-sm text-secondary-600">Total Tasks</p>
         </div>
         
         <div className="card text-center">
-          <div className="text-2xl font-bold text-warning-600 mb-2">
-            {metadata.total_hours}
+          <div className="text-2xl font-bold text-success-600">
+            {Math.round(timeline.phases.reduce((total, phase) => total + phase.estimated_hours, 0))}
           </div>
-          <div className="text-sm text-secondary-600">Total Hours</div>
+          <p className="text-sm text-secondary-600">Total Hours</p>
         </div>
         
         <div className="card text-center">
-          <div className="text-2xl font-bold text-accent-600 mb-2">
-            {timeline.phases.length}
+          <div className="text-2xl font-bold text-warning-600">
+            {Math.ceil((new Date(timelineData.user_info.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
           </div>
-          <div className="text-sm text-secondary-600">Phases</div>
+          <p className="text-sm text-secondary-600">Days Left</p>
         </div>
       </div>
 
@@ -385,50 +451,85 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
                       const taskStatus = getTaskStatus(task.due_date);
                       
                       return (
-                        <div key={taskIndex} className="flex items-start space-x-3 p-4 bg-secondary-50 rounded-lg">
-                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                            taskStatus === 'overdue' ? 'bg-danger-600' :
-                            taskStatus === 'today' ? 'bg-warning-600' :
-                            taskStatus === 'upcoming' ? 'bg-primary-600' :
-                            'bg-secondary-400'
-                          }`}>
-                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                          </div>
-                          
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium text-secondary-900">{task.title}</h4>
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                taskStatus === 'overdue' ? 'bg-danger-100 text-danger-800' :
-                                taskStatus === 'today' ? 'bg-warning-100 text-warning-800' :
-                                taskStatus === 'upcoming' ? 'bg-primary-100 text-primary-800' :
-                                'bg-secondary-100 text-secondary-800'
+                        <div key={taskIndex} className="p-4 bg-secondary-50 rounded-lg border border-secondary-200">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start space-x-3 flex-1">
+                              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                                taskStatus === 'overdue' ? 'bg-danger-600' :
+                                taskStatus === 'today' ? 'bg-warning-600' :
+                                taskStatus === 'upcoming' ? 'bg-primary-600' :
+                                'bg-secondary-400'
                               }`}>
-                                Priority {task.priority}
-                              </span>
+                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                              </div>
+                              
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-3 mb-2">
+                                  <h4 className="font-medium text-secondary-900">{task.title}</h4>
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    taskStatus === 'overdue' ? 'bg-danger-100 text-danger-800' :
+                                    taskStatus === 'today' ? 'bg-warning-100 text-warning-800' :
+                                    taskStatus === 'upcoming' ? 'bg-primary-100 text-primary-800' :
+                                    'bg-secondary-100 text-secondary-800'
+                                  }`}>
+                                    Priority {task.priority}
+                                  </span>
+                                </div>
+                                
+                                <p className="text-sm text-secondary-600 mb-3">{task.description}</p>
+                                
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-secondary-500">
+                                  <div className="flex items-center">
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    Due: {format(parseISO(task.due_date), 'MMM dd, yyyy')}
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-1" />
+                                    {task.estimated_hours}h
+                                  </div>
+                                  {task.focus_sessions && (
+                                    <div className="flex items-center">
+                                      <Target className="h-4 w-4 mr-1" />
+                                      {task.focus_sessions} sessions
+                                    </div>
+                                  )}
+                                  {task.assigned_date && (
+                                    <div className="flex items-center">
+                                      <Calendar className="h-4 w-4 mr-1" />
+                                      Assigned: {format(parseISO(task.assigned_date), 'MMM dd')}
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {task.deliverable && (
+                                  <div className="mt-2 p-2 bg-primary-50 rounded border border-primary-200">
+                                    <span className="text-sm font-medium text-primary-800">Deliverable: </span>
+                                    <span className="text-sm text-primary-700">{task.deliverable}</span>
+                                  </div>
+                                )}
+                                
+                                {task.dependencies && task.dependencies.length > 0 && (
+                                  <div className="mt-2">
+                                    <span className="text-sm text-secondary-500">Dependencies: </span>
+                                    <span className="text-sm text-secondary-700">
+                                      {task.dependencies.join(', ')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                             
-                            <p className="text-sm text-secondary-600 mt-1">{task.description}</p>
-                            
-                            <div className="flex items-center space-x-4 mt-2 text-sm text-secondary-500">
-                              <div className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                Due: {format(parseISO(task.due_date), 'MMM dd, yyyy')}
-                              </div>
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-1" />
-                                {task.estimated_hours} hours
-                              </div>
-                            </div>
-                            
-                            {task.dependencies.length > 0 && (
-                              <div className="mt-2">
-                                <span className="text-sm text-secondary-500">Dependencies: </span>
-                                <span className="text-sm text-secondary-700">
-                                  {task.dependencies.join(', ')}
-                                </span>
-                              </div>
-                            )}
+                            <button 
+                              onClick={() => handleStartWorking(task)}
+                              className={`btn-sm flex items-center space-x-2 ml-4 ${
+                                taskStatus === 'today' ? 'btn-primary' : 
+                                taskStatus === 'overdue' ? 'btn-danger' : 
+                                'btn-secondary'
+                              }`}
+                            >
+                              <Play className="h-3 w-3" />
+                              <span>Start</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -452,6 +553,19 @@ export default function TimelineDisplay({ timelineData, onEmailTest, userQuestio
           </p>
         </div>
       </div>
+
+      {/* Task Chat Modal */}
+      {showTaskChat && currentTask && (
+        <div className="fixed inset-0 z-50">
+          <TaskChat
+            task={currentTask}
+            onBack={handleBackFromTask}
+            onComplete={handleTaskComplete}
+            currentProjectId={currentProjectId}
+            userName={timelineData.user_info.name}
+          />
+        </div>
+      )}
     </div>
   );
 } 

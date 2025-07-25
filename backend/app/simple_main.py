@@ -12,28 +12,66 @@ import os
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
 from datetime import datetime, date
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
 
 # Import existing modules
 from backend.app.core.config import settings
 from backend.app.models.schemas import (
     UserQuestionnaireRequest, ThesisField, 
-    ProcrastinationLevel, WritingStyle
+    ProcrastinationLevel, WritingStyle, NotionWorkspaceRequest, NotionSyncRequest
 )
 from backend.app.services.ai_service import ThesisAIPlannerAgent
 from backend.app.services.email_service import EmailService
 from backend.app.integrations.notion_client import NotionThesisManager
+from backend.app.services.thesis_service import thesis_service
+from backend.app.services.task_work_service import TaskWorkService
+from backend.app.models.database import get_db
+from sqlalchemy.orm import Session
+
+
+# Pydantic models for brainstorming
+class BrainstormingMessage(BaseModel):
+    message: str
+    conversation_history: List[Dict[str, str]] = []
+    user_field: Optional[str] = None
+    ai_provider: str = "ollama"
+
+class TopicFinalization(BaseModel):
+    conversation_history: List[Dict[str, str]]
+    user_field: str
+    ai_provider: str = "ollama"
+
+# Pydantic models for task work
+class TaskStartRequest(BaseModel):
+    task_id: str
+    user_id: str
+    task_info: Dict[str, Any]
+
+class TaskChatMessage(BaseModel):
+    task_id: str
+    message: str
+    tool_request: Optional[Dict[str, Any]] = None
+
+class TaskToolRequest(BaseModel):
+    task_id: str
+    tool_name: str
+    tool_params: Dict[str, Any]
+
+class TaskCompletionRequest(BaseModel):
+    task_id: str
+    deliverable: str
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Simple lifespan manager."""
-    global ai_service, email_service
+    global ai_service, email_service, notion_service, task_work_service
     
     print("🚀 Starting simplified Thesis Helper...")
     print("🚀 Initializing services...")
@@ -54,14 +92,34 @@ async def lifespan(app: FastAPI):
         print(f"❌ Email service initialization failed: {e}")
         email_service = None
     
-    print(f"🔍 Service status: AI={ai_service is not None}, Email={email_service is not None}")
+    # Initialize Notion service
+    try:
+        notion_service = NotionThesisManager()
+        print("✅ Notion service initialized successfully")
+    except Exception as e:
+        print(f"❌ Notion service initialization failed: {e}")
+        notion_service = None
     
-    if ai_service is None and email_service is None:
+    # Initialize Task Work service
+    try:
+        task_work_service = TaskWorkService(ai_service)
+        print("✅ Task Work service initialized successfully")
+    except Exception as e:
+        print(f"❌ Task Work service initialization failed: {e}")
+        task_work_service = None
+    
+    print(f"🔍 Service status: AI={ai_service is not None}, Email={email_service is not None}, Notion={notion_service is not None}, TaskWork={task_work_service is not None}")
+    
+    if ai_service is None and email_service is None and notion_service is None and task_work_service is None:
         print("⚠️ WARNING: No services initialized successfully")
     elif ai_service is None:
         print("⚠️ WARNING: AI service failed to initialize")
     elif email_service is None:
         print("⚠️ WARNING: Email service failed to initialize")
+    elif notion_service is None:
+        print("⚠️ WARNING: Notion service failed to initialize")
+    elif task_work_service is None:
+        print("⚠️ WARNING: Task Work service failed to initialize")
     else:
         print("✅ All services initialized successfully")
     
@@ -90,6 +148,8 @@ app.add_middleware(
 # Global services
 ai_service = None
 email_service = None
+notion_service = None
+task_work_service = None
 
 
 @app.get("/")
@@ -116,31 +176,40 @@ async def health_check():
         "services": {
             "ai_service": ai_service is not None,
             "email_service": email_service is not None,
+            "notion_service": notion_service is not None,
             "config": settings.APP_NAME == "Thesis Helper"
         }
     }
 
 
 @app.post("/api/generate-timeline")
-async def generate_timeline(user_data: UserQuestionnaireRequest):
-    """Generate AI timeline for user."""
-    if not ai_service:
-        raise HTTPException(status_code=503, detail="AI service not available")
-    
+async def generate_timeline(user_data: UserQuestionnaireRequest, db: Session = Depends(get_db)):
+    """Generate timeline and save to database."""
     try:
+        if not ai_service:
+            raise HTTPException(status_code=503, detail="AI service not available")
+        
         # Generate timeline
-        timeline = ai_service.generate_timeline(
-            user_data=user_data,
-            thesis_description=user_data.thesis_description or "No detailed description provided"
-        )
+        result = ai_service.generate_timeline(user_data, user_data.thesis_description or "")
+        
+        # Extract the actual timeline data (not the full result with metadata)
+        timeline_data = result.get("timeline", {})
+        
+        # Save to database - pass the timeline data, not the full result
+        project = thesis_service.save_thesis_project(user_data, timeline_data, db)
         
         return {
             "success": True,
-            "timeline": timeline,
+            "project_id": project.id,
+            "message": "Timeline generated and saved successfully",
+            "timeline": {
+                "timeline": timeline_data,
+                "metadata": result.get("metadata", {})
+            },
             "user_info": {
                 "name": user_data.name,
                 "thesis_topic": user_data.thesis_topic,
-                "deadline": user_data.thesis_deadline.isoformat()
+                "deadline": user_data.thesis_deadline.strftime("%Y-%m-%d")
             }
         }
     except Exception as e:
@@ -214,55 +283,81 @@ async def test_email(email_data: dict):
 
 
 @app.post("/api/create-notion-workspace")
-async def create_notion_workspace(user_data: UserQuestionnaireRequest):
-    """Create advanced Notion workspace for thesis management."""
+async def create_notion_workspace_endpoint(request: NotionWorkspaceRequest, db: Session = Depends(get_db)):
+    """Create Notion workspace and save workspace info to database."""
     try:
-        notion_manager = NotionThesisManager()
+        if not notion_service:
+            raise HTTPException(status_code=503, detail="Notion service not available")
         
-        workspace = notion_manager.create_advanced_thesis_workspace(
-            user_name=user_data.name,
-            thesis_topic=user_data.thesis_topic,
-            thesis_description=user_data.thesis_description or "No description provided",
-            field=user_data.thesis_field.value if hasattr(user_data.thesis_field, 'value') else user_data.thesis_field
+        workspace_info = notion_service.create_student_workspace(
+            user_name=request.user_name,
+            thesis_topic=request.thesis_topic,
+            thesis_description=request.thesis_description
         )
+        
+        # If project_id is provided, save workspace info to database
+        if request.project_id:
+            thesis_service.update_notion_workspace_info(
+                project_id=request.project_id,
+                workspace_url=workspace_info.get("main_page", {}).get("url", ""),
+                task_db_id=workspace_info.get("task_database", {}).get("id", ""),
+                milestone_db_id=workspace_info.get("milestone_database", {}).get("id", ""),
+                main_page_id=workspace_info.get("main_page", {}).get("id", ""),
+                progress_page_id=workspace_info.get("progress_page", {}).get("id", ""),
+                db=db
+            )
         
         return {
             "success": True,
-            "workspace": workspace,
-            "message": "Advanced Notion workspace created successfully"
+            "message": "Notion workspace created successfully",
+            **workspace_info
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create advanced Notion workspace: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Failed to create Notion workspace: {str(e)}")
 
 @app.post("/api/sync-timeline-to-notion")
-async def sync_timeline_to_notion(request_data: dict):
-    """Sync timeline data to existing Notion workspace with comprehensive features."""
+async def sync_timeline_to_notion_endpoint(
+    sync_data: NotionSyncRequest, 
+    db: Session = Depends(get_db)
+):
+    """Sync timeline to Notion and update database."""
     try:
-        timeline_data = request_data.get("timeline_data")
-        workspace_info = request_data.get("workspace_info") 
-        user_info = request_data.get("user_info")
+        if not notion_service:
+            raise HTTPException(status_code=503, detail="Notion service not available")
         
-        if not all([timeline_data, workspace_info, user_info]):
-            raise HTTPException(status_code=400, detail="Missing required data")
+        # Prepare user_info dict for the notion service
+        user_info = {
+            "user_name": sync_data.user_name,
+            "project_id": sync_data.project_id
+        }
         
-        notion_manager = NotionThesisManager()
-        
-        sync_result = notion_manager.sync_comprehensive_timeline(
-            timeline_data=timeline_data,
-            workspace=workspace_info,
+        result = notion_service.sync_timeline_to_notion(
+            timeline_data=sync_data.timeline_data,
+            workspace=sync_data.workspace_info,
             user_info=user_info
         )
         
+        # If project_id is provided, update workspace info in database
+        if hasattr(sync_data, 'project_id') and sync_data.project_id:
+            workspace_info = sync_data.workspace_info
+            if workspace_info:
+                thesis_service.update_notion_workspace_info(
+                    project_id=sync_data.project_id,
+                    workspace_url=workspace_info.get("main_page", {}).get("url", ""),
+                    task_db_id=workspace_info.get("task_database", {}).get("id", ""),
+                    milestone_db_id=workspace_info.get("milestone_database", {}).get("id", ""),
+                    main_page_id=workspace_info.get("main_page", {}).get("id", ""),
+                    progress_page_id=workspace_info.get("progress_page", {}).get("id", ""),
+                    db=db
+                )
+        
         return {
             "success": True,
-            "sync_result": sync_result,
-            "message": "Timeline synced to Notion with comprehensive features"
+            "message": "Timeline synced to Notion successfully",
+            **result
         }
-        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to sync comprehensive timeline to Notion: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to sync timeline to Notion: {str(e)}")
 
 
 @app.get("/api/notion-workspace-summary/{workspace_id}")
@@ -308,6 +403,56 @@ async def test_notion_connection_endpoint():
         }
 
 
+@app.post("/api/brainstorm-chat")
+async def brainstorm_chat(chat_data: BrainstormingMessage):
+    """Interactive brainstorming chat for thesis topic development."""
+    try:
+        # Create AI service with user's preferred provider
+        ai_service = ThesisAIPlannerAgent(ai_provider=chat_data.ai_provider)
+        
+        # Get brainstorming response
+        response = ai_service.brainstorm_thesis_topic(
+            message=chat_data.message,
+            conversation_history=chat_data.conversation_history,
+            user_field=chat_data.user_field
+        )
+        
+        return {
+            "success": True,
+            "response": response["response"],
+            "topic_clarity": response["topic_clarity"],
+            "suggested_topic": response.get("suggested_topic"),
+            "suggested_description": response.get("suggested_description"),
+            "next_question": response.get("next_question")
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Brainstorming failed: {str(e)}")
+
+
+@app.post("/api/finalize-topic")
+async def finalize_topic(finalization_data: TopicFinalization):
+    """Extract final thesis topic and description from brainstorming conversation."""
+    try:
+        # Create AI service with user's preferred provider
+        ai_service = ThesisAIPlannerAgent(ai_provider=finalization_data.ai_provider)
+        
+        # Finalize topic from conversation
+        result = ai_service.finalize_thesis_topic(
+            conversation_history=finalization_data.conversation_history,
+            user_field=finalization_data.user_field
+        )
+        
+        return {
+            "success": True,
+            "thesis_topic": result["thesis_topic"],
+            "thesis_description": result["thesis_description"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Topic finalization failed: {str(e)}")
+
+
 @app.get("/api/sample-user")
 async def get_sample_user():
     """Get sample user data for testing."""
@@ -329,6 +474,225 @@ async def get_sample_user():
         "daily_email_time": "08:00",
         "timezone": "UTC"
     }
+
+@app.get("/api/thesis-projects")
+async def get_thesis_projects(db: Session = Depends(get_db)):
+    """Get all active thesis projects."""
+    try:
+        projects = thesis_service.get_active_thesis_projects(db)
+        return {
+            "success": True,
+            "projects": [
+                {
+                    "id": project.id,
+                    "thesis_topic": project.thesis_topic,
+                    "thesis_field": project.thesis_field,
+                    "user_name": project.user_name,
+                    "thesis_deadline": project.thesis_deadline.isoformat(),
+                    "created_at": project.created_at.isoformat(),
+                    "completion_percentage": project.completion_percentage,
+                    "notion_workspace_url": project.notion_workspace_url
+                }
+                for project in projects
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get thesis projects: {str(e)}")
+
+@app.get("/api/thesis-projects/{project_id}")
+async def get_thesis_project(project_id: int, db: Session = Depends(get_db)):
+    """Get a specific thesis project by ID."""
+    try:
+        project = thesis_service.get_thesis_project_by_id(project_id, db)
+        if not project:
+            raise HTTPException(status_code=404, detail="Thesis project not found")
+        
+        # Convert to timeline format for frontend
+        timeline_data = project.timeline_data or {}
+        progress_data = thesis_service.get_project_progress(project_id, db)
+        
+        return {
+            "success": True,
+            "project": {
+                "id": project.id,
+                "user_name": project.user_name,
+                "email": project.email,
+                "thesis_topic": project.thesis_topic,
+                "thesis_description": project.thesis_description,
+                "thesis_field": project.thesis_field,
+                "thesis_deadline": project.thesis_deadline.isoformat(),
+                "daily_hours_available": project.daily_hours_available,
+                "work_days_per_week": project.work_days_per_week,
+                "focus_duration": project.focus_duration,
+                "procrastination_level": project.procrastination_level,
+                "writing_style": project.writing_style,
+                "ai_provider": project.ai_provider,
+                "created_at": project.created_at.isoformat(),
+                "notion_workspace_url": project.notion_workspace_url,
+                "notion_task_db_id": project.notion_task_db_id,
+                "notion_milestone_db_id": project.notion_milestone_db_id,
+                "notion_main_page_id": project.notion_main_page_id,
+                "notion_progress_page_id": project.notion_progress_page_id,
+                "timeline_data": timeline_data,
+                "progress": progress_data
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get thesis project: {str(e)}")
+
+@app.get("/api/latest-thesis")
+async def get_latest_thesis(db: Session = Depends(get_db)):
+    """Get the latest active thesis project."""
+    try:
+        project = thesis_service.get_latest_thesis_project(db)
+        if not project:
+            return {"success": True, "project": None}
+        
+        timeline_data = project.timeline_data or {}
+        progress_data = thesis_service.get_project_progress(project.id, db)
+        
+        return {
+            "success": True,
+            "project": {
+                "id": project.id,
+                "user_name": project.user_name,
+                "email": project.email,
+                "thesis_topic": project.thesis_topic,
+                "thesis_description": project.thesis_description,
+                "thesis_field": project.thesis_field,
+                "thesis_deadline": project.thesis_deadline.isoformat(),
+                "daily_hours_available": project.daily_hours_available,
+                "work_days_per_week": project.work_days_per_week,
+                "focus_duration": project.focus_duration,
+                "procrastination_level": project.procrastination_level,
+                "writing_style": project.writing_style,
+                "ai_provider": project.ai_provider,
+                "created_at": project.created_at.isoformat(),
+                "notion_workspace_url": project.notion_workspace_url,
+                "timeline_data": timeline_data,
+                "progress": progress_data
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get latest thesis: {str(e)}")
+
+@app.delete("/api/thesis-projects/{project_id}")
+async def deactivate_thesis_project(project_id: int, db: Session = Depends(get_db)):
+    """Deactivate (soft delete) a thesis project."""
+    try:
+        success = thesis_service.deactivate_thesis_project(project_id, db)
+        if not success:
+            raise HTTPException(status_code=404, detail="Thesis project not found")
+        
+        return {"success": True, "message": "Thesis project deactivated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to deactivate thesis project: {str(e)}")
+
+
+# Task Work Endpoints
+@app.post("/api/task/start")
+async def start_task_session(request: TaskStartRequest):
+    """Start a new task work session."""
+    if not task_work_service:
+        raise HTTPException(status_code=503, detail="Task work service not available")
+    
+    try:
+        result = task_work_service.start_task_session(
+            task_id=request.task_id,
+            user_id=request.user_id,
+            task_info=request.task_info
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to start task session"))
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to start task session: {str(e)}")
+
+@app.post("/api/task/chat")
+async def task_chat(request: TaskChatMessage):
+    """Process a user message in a task work session."""
+    if not task_work_service:
+        raise HTTPException(status_code=503, detail="Task work service not available")
+    
+    try:
+        result = task_work_service.process_user_message(
+            task_id=request.task_id,
+            message=request.message,
+            tool_request=request.tool_request
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to process message"))
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process task message: {str(e)}")
+
+@app.post("/api/task/tool")
+async def use_task_tool(request: TaskToolRequest):
+    """Use a specific tool in a task work session."""
+    if not task_work_service:
+        raise HTTPException(status_code=503, detail="Task work service not available")
+    
+    try:
+        result = task_work_service.use_tool(
+            task_id=request.task_id,
+            tool_name=request.tool_name,
+            tool_params=request.tool_params
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to use tool: {str(e)}")
+
+@app.post("/api/task/complete")
+async def complete_task(request: TaskCompletionRequest):
+    """Complete a task and save the deliverable."""
+    if not task_work_service:
+        raise HTTPException(status_code=503, detail="Task work service not available")
+    
+    try:
+        result = task_work_service.complete_task(
+            task_id=request.task_id,
+            deliverable=request.deliverable
+        )
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to complete task"))
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to complete task: {str(e)}")
+
+@app.get("/api/task/status/{task_id}")
+async def get_task_status(task_id: str):
+    """Get the status of a task work session."""
+    if not task_work_service:
+        raise HTTPException(status_code=503, detail="Task work service not available")
+    
+    try:
+        result = task_work_service.get_task_status(task_id)
+        
+        if not result.get("success"):
+            raise HTTPException(status_code=404, detail=result.get("error", "Task session not found"))
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get task status: {str(e)}")
 
 
 if __name__ == "__main__":

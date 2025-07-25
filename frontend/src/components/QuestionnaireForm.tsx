@@ -1,24 +1,73 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { ChevronRight, ChevronLeft, User, BookOpen, Clock, Settings, Mail, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, User, BookOpen, Clock, Settings, Mail, Loader2, CheckCircle } from 'lucide-react';
 import { 
   UserQuestionnaireData, 
   THESIS_FIELDS, 
   PROCRASTINATION_LEVELS, 
   WRITING_STYLES, 
-  TIMEZONES 
+  TIMEZONES,
+  AI_PROVIDERS
 } from '../services/api';
 
 interface QuestionnaireFormProps {
   onSubmit: (data: UserQuestionnaireData) => void;
   loading?: boolean;
+  onBack?: () => void;
 }
 
 interface FormData extends UserQuestionnaireData {}
 
-export default function QuestionnaireForm({ onSubmit, loading = false }: QuestionnaireFormProps) {
+export default function QuestionnaireForm({ onSubmit, loading = false, onBack }: QuestionnaireFormProps) {
   const [currentStep, setCurrentStep] = useState(0);
-  const { register, handleSubmit, formState: { errors }, watch, trigger } = useForm<FormData>();
+  
+  // Read brainstormed data from session storage
+  const getBrainstormedData = () => {
+    if (typeof window !== 'undefined') {
+      const topic = window.sessionStorage.getItem('brainstormed_topic');
+      const description = window.sessionStorage.getItem('brainstormed_description');
+      const field = window.sessionStorage.getItem('brainstormed_field') || 'Computer Science';
+      
+      return {
+        thesis_topic: topic || '',
+        thesis_description: description || '',
+        thesis_field: field
+      };
+    }
+    return {
+      thesis_topic: '',
+      thesis_description: '',
+      thesis_field: 'Computer Science'
+    };
+  };
+
+  const brainstormedData = getBrainstormedData();
+  
+  const { register, handleSubmit, formState: { errors }, watch, trigger } = useForm<FormData>({
+    defaultValues: {
+      // Email and notifications
+      email_notifications: true,
+      daily_email_time: "08:00",
+      timezone: "UTC",
+      ai_provider: "ollama",
+      
+      // Pre-fill with brainstormed data
+      thesis_topic: brainstormedData.thesis_topic,
+      thesis_description: brainstormedData.thesis_description,
+      thesis_field: brainstormedData.thesis_field,
+      
+      // Schedule defaults
+      daily_hours_available: 4,
+      preferred_start_time: "09:00",
+      preferred_end_time: "17:00", 
+      work_days_per_week: 5,
+      
+      // Work style defaults
+      procrastination_level: "medium",
+      focus_duration: 60, // 60 minutes (meets >= 15 requirement)
+      writing_style: "draft_then_revise"
+    }
+  });
 
   const steps = [
     { id: 'personal', title: 'Personal Information', icon: User },
@@ -147,17 +196,33 @@ export default function QuestionnaireForm({ onSubmit, loading = false }: Questio
               <div className="card-header">
                 <h2 className="text-2xl font-bold text-secondary-900">Thesis Details</h2>
                 <p className="text-secondary-600 mt-1">Tell us about your thesis project.</p>
+                {brainstormedData.thesis_topic && (
+                  <div className="mt-3 p-3 bg-success-50 border border-success-200 rounded-lg">
+                    <div className="flex items-center">
+                      <CheckCircle className="h-5 w-5 text-success-600 mr-2" />
+                      <p className="text-success-800 text-sm">
+                        <strong>Great!</strong> We've pre-filled your thesis details from your brainstorming session. 
+                        You can review and edit them below.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-secondary-700 mb-2">
                     Thesis Topic *
+                    {brainstormedData.thesis_topic && (
+                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                        Auto-filled from brainstorming
+                      </span>
+                    )}
                   </label>
                   <input
                     type="text"
                     {...register('thesis_topic', { required: 'Thesis topic is required' })}
-                    className="form-input"
+                    className={`form-input ${brainstormedData.thesis_topic ? 'border-success-300 bg-success-50' : ''}`}
                     placeholder="e.g., Machine Learning Applications in Climate Change Prediction"
                   />
                   {errors.thesis_topic && <p className="text-danger-600 text-sm mt-1">{errors.thesis_topic.message}</p>}
@@ -167,10 +232,15 @@ export default function QuestionnaireForm({ onSubmit, loading = false }: Questio
                   <div>
                     <label className="block text-sm font-medium text-secondary-700 mb-2">
                       Academic Field *
+                      {brainstormedData.thesis_field && brainstormedData.thesis_field !== 'Computer Science' && (
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                          From brainstorming
+                        </span>
+                      )}
                     </label>
                     <select
                       {...register('thesis_field', { required: 'Academic field is required' })}
-                      className="form-select"
+                      className={`form-select ${brainstormedData.thesis_field && brainstormedData.thesis_field !== 'Computer Science' ? 'border-success-300 bg-success-50' : ''}`}
                     >
                       <option value="">Select your field</option>
                       {THESIS_FIELDS.map(field => (
@@ -196,11 +266,16 @@ export default function QuestionnaireForm({ onSubmit, loading = false }: Questio
                 <div>
                   <label className="block text-sm font-medium text-secondary-700 mb-2">
                     Thesis Description *
+                    {brainstormedData.thesis_description && (
+                      <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                        Auto-filled from brainstorming
+                      </span>
+                    )}
                   </label>
                   <textarea
                     rows={4}
                     {...register('thesis_description', { required: 'Description is required' })}
-                    className="form-textarea"
+                    className={`form-textarea ${brainstormedData.thesis_description ? 'border-success-300 bg-success-50' : ''}`}
                     placeholder="Provide a detailed description of your thesis project, including objectives, methodology, and expected outcomes..."
                   />
                   {errors.thesis_description && <p className="text-danger-600 text-sm mt-1">{errors.thesis_description.message}</p>}
@@ -347,53 +422,105 @@ export default function QuestionnaireForm({ onSubmit, loading = false }: Questio
             </div>
           )}
 
-          {/* Step 5: Notifications */}
+          {/* Step 5: Notifications & AI Settings */}
           {currentStep === 4 && (
             <div className="animate-fadeInUp">
               <div className="card-header">
-                <h2 className="text-2xl font-bold text-secondary-900">Email Notifications</h2>
-                <p className="text-secondary-600 mt-1">Configure your email preferences for daily updates.</p>
+                <h2 className="text-2xl font-bold text-secondary-900">Notifications & AI Settings</h2>
+                <p className="text-secondary-600 mt-1">Configure your email preferences and choose your AI assistant.</p>
               </div>
               
-              <div className="space-y-6">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="email_notifications"
-                    {...register('email_notifications')}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
-                  />
-                  <label htmlFor="email_notifications" className="ml-3 block text-sm font-medium text-secondary-700">
-                    Enable daily email notifications
+              <div className="space-y-8">
+                {/* AI Provider Selection */}
+                <div>
+                  <label className="block text-lg font-medium text-secondary-900 mb-4">
+                    Choose Your AI Assistant *
                   </label>
+                  <div className="space-y-4">
+                    {AI_PROVIDERS.map((provider) => (
+                      <div key={provider.value} className="relative">
+                        <input
+                          type="radio"
+                          id={`ai_provider_${provider.value}`}
+                          value={provider.value}
+                          {...register('ai_provider', { required: 'Please select an AI provider' })}
+                          className="sr-only"
+                        />
+                        <label
+                          htmlFor={`ai_provider_${provider.value}`}
+                          className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                            watch('ai_provider') === provider.value
+                              ? 'border-primary-500 bg-primary-50'
+                              : 'border-secondary-200 hover:border-secondary-300'
+                          }`}
+                        >
+                          <div className={`flex-shrink-0 w-4 h-4 rounded-full border-2 mt-1 mr-3 ${
+                            watch('ai_provider') === provider.value
+                              ? 'border-primary-500 bg-primary-500'
+                              : 'border-secondary-300'
+                          }`}>
+                            {watch('ai_provider') === provider.value && (
+                              <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-secondary-900">{provider.label}</h4>
+                            <p className="text-sm text-secondary-600 mt-1">{provider.description}</p>
+                            {provider.value === 'ollama' && (
+                              <p className="text-xs text-primary-600 mt-2 font-medium">
+                                ✨ Recommended: Free, private, and no API keys required!
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  {errors.ai_provider && <p className="text-danger-600 text-sm mt-2">{errors.ai_provider.message}</p>}
                 </div>
 
-                {watch('email_notifications') && (
-                  <div className="ml-7 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-secondary-700 mb-2">
-                        Daily Email Time *
-                      </label>
-                      <input
-                        type="time"
-                        {...register('daily_email_time', { 
-                          required: watch('email_notifications') ? 'Email time is required' : false 
-                        })}
-                        className="form-input"
-                      />
-                      {errors.daily_email_time && <p className="text-danger-600 text-sm mt-1">{errors.daily_email_time.message}</p>}
-                    </div>
+                {/* Email Notifications */}
+                <div className="border-t border-secondary-200 pt-6">
+                  <h3 className="text-lg font-medium text-secondary-900 mb-4">Email Notifications</h3>
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="email_notifications"
+                      {...register('email_notifications')}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+                    />
+                    <label htmlFor="email_notifications" className="ml-3 block text-sm font-medium text-secondary-700">
+                      Enable daily email notifications
+                    </label>
                   </div>
-                )}
 
-                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-                  <h3 className="font-medium text-primary-900 mb-2">What you'll receive:</h3>
-                  <ul className="text-sm text-primary-800 space-y-1">
-                    <li>• Daily progress updates and motivational messages</li>
-                    <li>• Task reminders and deadline alerts</li>
-                    <li>• Weekly progress summaries</li>
-                    <li>• Productivity tips and academic advice</li>
-                  </ul>
+                  {watch('email_notifications') && (
+                    <div className="ml-7 mt-4 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-secondary-700 mb-2">
+                          Daily Email Time *
+                        </label>
+                        <input
+                          type="time"
+                          {...register('daily_email_time', { 
+                            required: watch('email_notifications') ? 'Email time is required' : false 
+                          })}
+                          className="form-input"
+                        />
+                        {errors.daily_email_time && <p className="text-danger-600 text-sm mt-1">{errors.daily_email_time.message}</p>}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mt-4">
+                    <h4 className="font-medium text-primary-900 mb-2">What you'll receive:</h4>
+                    <ul className="text-sm text-primary-800 space-y-1">
+                      <li>• Daily progress updates and motivational messages</li>
+                      <li>• Task reminders and deadline alerts</li>
+                      <li>• Weekly progress summaries</li>
+                      <li>• Productivity tips and academic advice</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -401,15 +528,29 @@ export default function QuestionnaireForm({ onSubmit, loading = false }: Questio
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-8 pt-6 border-t border-secondary-200">
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStep === 0}
-              className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Previous
-            </button>
+            <div className="flex gap-3">
+              {onBack && currentStep === 0 && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="btn-secondary flex items-center"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back to Brainstorming
+                </button>
+              )}
+              
+              <button
+                type="button"
+                onClick={prevStep}
+                disabled={currentStep === 0}
+                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                style={{ display: currentStep === 0 ? 'none' : 'flex' }}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Previous
+              </button>
+            </div>
 
             {currentStep < steps.length - 1 ? (
               <button

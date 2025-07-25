@@ -15,6 +15,17 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, Session
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
+import os
+
+# Database configuration
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./thesis_helper.db")
+
+engine = create_engine(
+    DATABASE_URL, 
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Create the base class for all models
 Base = declarative_base()
@@ -245,71 +256,134 @@ class ThesisTimeline(Base):
     user = relationship("User", back_populates="timeline")
 
 
-# Database engine and session setup
-def get_database_engine(database_url: str):
-    """
-    Create and return a SQLAlchemy engine.
+class ThesisProject(Base):
+    """Main thesis project table."""
+    __tablename__ = "thesis_projects"
     
-    Args:
-        database_url: The database connection URL
-        
-    Returns:
-        SQLAlchemy engine instance
-    """
-    engine = create_engine(database_url)
-    return engine
-
-
-def get_database_session(engine):
-    """
-    Create and return a database session.
+    id = Column(Integer, primary_key=True, index=True)
+    user_name = Column(String, nullable=False)
+    email = Column(String, nullable=False)
     
-    Args:
-        engine: SQLAlchemy engine instance
-        
-    Returns:
-        Database session
-    """
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    return SessionLocal()
-
-
-def create_tables(engine):
-    """
-    Create all database tables.
+    # Thesis details
+    thesis_topic = Column(String, nullable=False)
+    thesis_description = Column(Text, nullable=False)
+    thesis_field = Column(String, nullable=False)
+    thesis_deadline = Column(DateTime, nullable=False)
     
-    Args:
-        engine: SQLAlchemy engine instance
-    """
+    # User preferences
+    daily_hours_available = Column(Integer, nullable=False)
+    work_days_per_week = Column(Integer, nullable=False)
+    focus_duration = Column(Integer, nullable=False)
+    procrastination_level = Column(String, nullable=False)
+    writing_style = Column(String, nullable=False)
+    ai_provider = Column(String, nullable=False, default="ollama")
+    
+    # Progress tracking
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_active = Column(Boolean, default=True)
+    completion_percentage = Column(Float, default=0.0)
+    
+    # Notion integration
+    notion_workspace_url = Column(String, nullable=True)
+    notion_task_db_id = Column(String, nullable=True)
+    notion_milestone_db_id = Column(String, nullable=True)
+    notion_main_page_id = Column(String, nullable=True)
+    notion_progress_page_id = Column(String, nullable=True)
+    
+    # Timeline data as JSON
+    timeline_data = Column(JSON, nullable=True)
+    
+    # Relationships
+    phases = relationship("ThesisPhase", back_populates="project", cascade="all, delete-orphan")
+    milestones = relationship("ThesisMilestone", back_populates="project", cascade="all, delete-orphan")
+
+class ThesisPhase(Base):
+    """Thesis phases table."""
+    __tablename__ = "thesis_phases"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("thesis_projects.id"), nullable=False)
+    
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    estimated_hours = Column(Integer, nullable=False)
+    phase_order = Column(Integer, nullable=False)
+    
+    # Progress
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
+    actual_hours = Column(Integer, default=0)
+    
+    # Relationships
+    project = relationship("ThesisProject", back_populates="phases")
+    tasks = relationship("ThesisTask", back_populates="phase", cascade="all, delete-orphan")
+
+class ThesisTask(Base):
+    """Individual tasks table."""
+    __tablename__ = "thesis_tasks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    phase_id = Column(Integer, ForeignKey("thesis_phases.id"), nullable=False)
+    project_id = Column(Integer, ForeignKey("thesis_projects.id"), nullable=False)
+    
+    title = Column(String, nullable=False)
+    description = Column(Text)
+    estimated_hours = Column(Integer, nullable=False)
+    priority = Column(Integer, default=1)
+    due_date = Column(DateTime, nullable=False)
+    
+    # Progress
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
+    actual_hours = Column(Integer, default=0)
+    
+    # Notion integration
+    notion_task_id = Column(String, nullable=True)
+    
+    # Relationships
+    phase = relationship("ThesisPhase", back_populates="tasks")
+    project = relationship("ThesisProject")
+
+class ThesisMilestone(Base):
+    """Thesis milestones table."""
+    __tablename__ = "thesis_milestones"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("thesis_projects.id"), nullable=False)
+    
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    target_date = Column(DateTime, nullable=False)
+    deliverables = Column(JSON)  # List of deliverables
+    
+    # Progress
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
+    
+    # Notion integration
+    notion_milestone_id = Column(String, nullable=True)
+    
+    # Relationships
+    project = relationship("ThesisProject", back_populates="milestones")
+
+# Create all tables
+def create_tables():
+    """Create all database tables."""
     Base.metadata.create_all(bind=engine)
 
-
-def drop_tables(engine):
-    """
-    Drop all database tables.
-    
-    Args:
-        engine: SQLAlchemy engine instance
-    """
-    Base.metadata.drop_all(bind=engine)
-
-
-# Database session dependency for FastAPI
+# Database dependency
 def get_db():
-    """
-    Database session dependency for FastAPI.
-    
-    This function provides a database session for each request
-    and ensures proper cleanup after the request is complete.
-    
-    Yields:
-        Database session
-    """
-    from backend.app.core.config import get_database_url
-    
-    engine = get_database_engine(get_database_url())
-    db = get_database_session(engine)
+    """Get database session."""
+    db = SessionLocal()
     try:
         yield db
     finally:
-        db.close() 
+        db.close()
+
+# Initialize database
+if __name__ == "__main__":
+    create_tables()
+    print("✅ Database tables created successfully!") 

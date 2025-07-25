@@ -56,6 +56,12 @@ class ThesisField(str, Enum):
     OTHER = "Other"
 
 
+class AIProvider(str, Enum):
+    """Enumeration for AI providers."""
+    OLLAMA = "ollama"  # Local Llama via Ollama
+    GEMINI = "gemini"  # Google Gemini API
+
+
 # User-related models
 class UserQuestionnaireRequest(BaseModel):
     """
@@ -90,6 +96,7 @@ class UserQuestionnaireRequest(BaseModel):
     email_notifications: bool = Field(True, description="Enable email notifications")
     daily_email_time: str = Field("08:00", pattern=r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$", description="Daily email time")
     timezone: str = Field("UTC", description="User's timezone")
+    ai_provider: AIProvider = Field(AIProvider.OLLAMA, description="Preferred AI provider (Ollama is free and local)")
     
     @validator('thesis_deadline')
     def validate_deadline(cls, v):
@@ -335,3 +342,36 @@ class HealthCheckResponse(BaseModel):
     notion_connected: bool
     google_calendar_connected: bool
     email_service_available: bool 
+
+
+class NotionWorkspaceRequest(BaseModel):
+    """Request model for creating Notion workspace."""
+    user_name: str = Field(..., description="User's name")
+    thesis_topic: str = Field(..., description="Thesis topic")
+    thesis_description: str = Field(..., description="Thesis description")
+    project_id: Optional[int] = Field(None, description="Optional project ID to link workspace")
+
+class ThesisProjectSummary(BaseModel):
+    """Summary model for thesis project list."""
+    id: int
+    thesis_topic: str
+    thesis_field: str
+    user_name: str
+    thesis_deadline: str
+    created_at: str
+    completion_percentage: float
+    notion_workspace_url: Optional[str]
+
+class ThesisProjectResponse(BaseModel):
+    """Response model for thesis project details."""
+    success: bool
+    project: Optional[Dict] = None
+    projects: Optional[List[ThesisProjectSummary]] = None
+    message: Optional[str] = None 
+
+class NotionSyncRequest(BaseModel):
+    """Request model for syncing timeline to Notion."""
+    timeline_data: Dict = Field(..., description="Timeline data to sync")
+    workspace_info: Dict = Field(..., description="Notion workspace information")
+    user_name: str = Field(..., description="User's name")
+    project_id: Optional[int] = Field(None, description="Optional project ID to update") 

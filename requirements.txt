@@ -37,3 +37,17 @@ pytz==2023.3
 pytest==7.4.3
 black==23.11.0
 flake8==6.1.0 
+
+# Task Helper Tools (from colleagues)
+transformers==4.53.0
+sentencepiece==0.2.0
+torch>=2.3.0
+scipy>=1.11.0
+pillow>=10.0.0
+pymupdf==1.24.4
+pix2tex[gui]
+scikit-learn>=1.3.0
+
+# Additional dependencies for ethics system
+pandas>=2.0.0
+numpy>=1.24.0 
