@@ -14,9 +14,9 @@ This paper presents the design, implementation, and evaluation of an AI-powered 
 
 ## 1. Introduction
 
-The process of completing a thesis or dissertation represents one of the most challenging academic endeavors students face. The complexity of managing literature reviews, research methodologies, data collection, analysis, and writing over extended periods often overwhelms students, leading to procrastination, poor time management, and academic stress. Traditional project management tools, while helpful for general tasks, lack the specialized features needed for academic research workflows.
+The process of completing a thesis or dissertation represents one of the most challenging academic endeavors students face. The complexity of managing literature reviews, research methodologies, data collection, analysis, and writing over extended periods often overwhelms students, leading to procrastination, poor time management, high rate of mental health issues during thesis writing, such as sleep loss, depression, and academic stress. Traditional project management tools, while helpful for general tasks, lack the specialized features needed for scholarly research workflows.
 
-Recent advances in artificial intelligence, particularly large language models (LLMs), present new opportunities to address these challenges. AI systems can assist with various aspects of academic work, from brainstorming research topics to generating structured timelines and providing specialized research tools. However, the integration of AI into academic workflows raises important questions about academic integrity, appropriate usage, and the balance between assistance and independent work.
+Recent advances in artificial intelligence, particularly large language models (LLMs), present new opportunities to address these challenges. AI systems can assist with various aspects of academic work, from brainstorming research topics to generating structured timelines, polishing academic writing styles, and providing specialized research tools. However, the integration of AI into academic workflows raises important questions about academic integrity, appropriate usage, and the balance between assistance and independent work. As a result, lots of universities tend to be very conservative in using AI in case of making student lose their independent critical thinking skills. 
 
 This paper describes the development of a comprehensive AI-powered thesis management system designed to address these challenges while maintaining academic integrity. Our system, called "Thesis Helper," provides students with intelligent planning assistance, automated task generation, specialized academic tools, and integrated project management capabilities. The platform supports both local AI models (for privacy) and cloud-based services (for performance), allowing users to choose their preferred approach based on their needs and institutional policies.
 
@@ -58,6 +58,11 @@ An ethics tracking system monitors AI usage patterns, provides academic integrit
 
 The system implements comprehensive project persistence using SQLAlchemy models for thesis projects, phases, tasks, and milestones. Frontend state management utilizes React hooks and session storage for temporary data, with automatic synchronization to the backend for permanent storage.
 
+### 2.6 Human Feedback Reinforcement Learning
+
+Based on the student and advisor feedback, our agent should intelligently pass to the student work routine and advisors thesis plans. 
+
+Ideally, 
 ## 3. Results
 
 ### 3.1 System Performance and Functionality
@@ -120,10 +125,12 @@ The ethics monitoring system addresses a critical concern in AI-assisted academi
 
 The choice of modern web technologies (Next.js, FastAPI, TypeScript) provides a solid foundation for future development while ensuring maintainability and scalability. The modular architecture allows for easy integration of new AI models, academic tools, and external services as they become available.
 
+
 ### 4.6 Limitations and Areas for Improvement
 
 Current limitations include dependency on external AI services for cloud functionality, potential privacy concerns with cloud AI models, and the need for ongoing maintenance as academic APIs evolve. Future improvements could include offline AI capabilities, integration with institutional learning management systems, and expanded language support for international users.
 
+In addition, the reinforcement learning fails to be integrated into our final project since lots of technical difficulities. 
 ## Conclusions
 
 This work demonstrates the successful implementation of a comprehensive AI-powered thesis management system that addresses real challenges in academic project management. The system effectively combines artificial intelligence assistance with practical project management tools while maintaining academic integrity through built-in ethics monitoring.
