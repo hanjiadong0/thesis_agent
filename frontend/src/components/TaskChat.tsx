@@ -368,135 +368,402 @@ const TaskChat: React.FC<TaskChatProps> = ({
     return 'text-red-600';
   };
 
-  const formatToolResult = (result: any) => {
+  const renderToolResult = (result: any) => {
     if (!result) return null;
+
+    const ToolCard = ({ icon, title, children, bgColor = "bg-blue-50", borderColor = "border-blue-200", iconColor = "text-blue-600" }: any) => (
+      <div className={`mt-4 p-4 rounded-xl border-2 ${bgColor} ${borderColor} shadow-sm`}>
+        <div className="flex items-center space-x-3 mb-3">
+          <div className={`p-2 rounded-lg bg-white shadow-sm ${iconColor}`}>
+            {icon}
+          </div>
+          <h4 className={`font-semibold ${iconColor.replace('text-', 'text-').replace('-600', '-800')}`}>{title}</h4>
+        </div>
+        {children}
+      </div>
+    );
 
     switch (result.tool) {
       case 'research_paper':
         return (
-          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900">📚 Found {result.papers_found} papers:</h4>
-            {result.papers?.slice(0, 3).map((paper: any, index: number) => (
-              <div key={index} className="mt-2 p-2 bg-white rounded border">
-                <h5 className="font-medium text-sm">{paper.title}</h5>
-                <p className="text-xs text-gray-600">{paper.shortCitation}</p>
-                {paper.abstract && (
-                  <p className="text-xs text-gray-700 mt-1">{paper.abstract.substring(0, 200)}...</p>
-                )}
-              </div>
-            ))}
-          </div>
+          <ToolCard 
+            icon={<BookOpen className="h-5 w-5" />} 
+            title="📚 Research Papers Found"
+            bgColor="bg-indigo-50" 
+            borderColor="border-indigo-200" 
+            iconColor="text-indigo-600"
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-indigo-700">
+                <strong>Found {result.papers_found || 0} relevant papers</strong>
+              </p>
+              {result.papers?.slice(0, 3).map((paper: any, index: number) => (
+                <div key={index} className="bg-white p-4 rounded-lg border border-indigo-100 shadow-sm">
+                  <h5 className="font-medium text-gray-900 mb-2 leading-snug">{paper.title}</h5>
+                  <p className="text-xs text-gray-600 mb-2 font-mono">{paper.shortCitation}</p>
+                  {paper.abstract && (
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {paper.abstract.substring(0, 250)}...
+                    </p>
+                  )}
+                  {paper.url && (
+                    <a href={paper.url} target="_blank" rel="noopener noreferrer" 
+                       className="inline-flex items-center mt-2 text-indigo-600 hover:text-indigo-800 text-sm">
+                      <ArrowLeft className="h-3 w-3 mr-1 rotate-180" />
+                      View Paper
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ToolCard>
         );
       
       case 'generate_citation':
         return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">📄 BibTeX Citation:</h4>
-            <pre className="text-xs bg-white p-2 rounded border mt-2 overflow-x-auto">
-              {result.citation}
-            </pre>
-          </div>
+          <ToolCard 
+            icon={<FileText className="h-5 w-5" />} 
+            title="📄 BibTeX Citation Generated"
+            bgColor="bg-green-50" 
+            borderColor="border-green-200" 
+            iconColor="text-green-600"
+          >
+            <div className="bg-gray-900 p-4 rounded-lg overflow-x-auto">
+              <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
+                {result.citation || "No citation generated"}
+              </pre>
+            </div>
+            <button 
+              onClick={() => navigator.clipboard?.writeText(result.citation)}
+              className="mt-3 btn-secondary text-sm"
+            >
+              📋 Copy Citation
+            </button>
+          </ToolCard>
         );
       
       case 'ai_detection':
+        const aiProb = result.ai_probability || 0;
+        const isHighAI = aiProb > 0.7;
         return (
-          <div className="mt-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-            <h4 className="font-semibold text-yellow-900">🔍 AI Detection Results:</h4>
-            <p className="text-sm">
-              AI Probability: <span className="font-medium">{(result.ai_probability * 100).toFixed(1)}%</span>
-            </p>
-            <p className="text-xs text-gray-600">{result.explanation}</p>
-          </div>
+          <ToolCard 
+            icon={<Search className="h-5 w-5" />} 
+            title="🔍 AI Content Detection"
+            bgColor={isHighAI ? "bg-red-50" : "bg-yellow-50"} 
+            borderColor={isHighAI ? "border-red-200" : "border-yellow-200"} 
+            iconColor={isHighAI ? "text-red-600" : "text-yellow-600"}
+          >
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">AI Probability:</span>
+                <span className={`font-bold text-lg ${isHighAI ? 'text-red-700' : 'text-yellow-700'}`}>
+                  {(aiProb * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className={`h-3 rounded-full transition-all duration-500 ${
+                    isHighAI ? 'bg-red-500' : 'bg-yellow-500'
+                  }`}
+                  style={{ width: `${aiProb * 100}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-700 leading-relaxed">
+                {result.explanation || "Analysis completed"}
+              </p>
+              {isHighAI && (
+                <div className="bg-red-100 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-800 text-sm font-medium">
+                    ⚠️ High probability of AI-generated content detected
+                  </p>
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
 
       case 'grammar_check':
+        const issues = result.analysis?.issues || [];
         return (
-          <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
-            <h4 className="font-semibold text-purple-900">✍️ Grammar & Style Analysis:</h4>
-            <p className="text-sm">Issues found: {result.analysis?.issues?.length || 0}</p>
-            <p className="text-xs">Readability: {result.analysis?.readability_score?.level}</p>
-            <p className="text-xs">Academic tone: {result.analysis?.academic_tone_score?.level}</p>
-          </div>
+          <ToolCard 
+            icon={<CheckCircle className="h-5 w-5" />} 
+            title="✍️ Grammar & Style Analysis"
+            bgColor="bg-purple-50" 
+            borderColor="border-purple-200" 
+            iconColor="text-purple-600"
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <p className="text-sm text-gray-600">Issues Found</p>
+                  <p className="text-xl font-bold text-purple-700">{issues.length}</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border border-purple-100">
+                  <p className="text-sm text-gray-600">Readability</p>
+                  <p className="text-lg font-semibold text-purple-700">
+                    {result.analysis?.readability_score?.level || "Good"}
+                  </p>
+                </div>
+              </div>
+              {issues.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="font-medium text-purple-800">Top Issues:</h5>
+                  {issues.slice(0, 3).map((issue: any, index: number) => (
+                    <div key={index} className="bg-white p-3 rounded border border-purple-100">
+                      <p className="text-sm text-purple-700">{issue.message || issue}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
 
       case 'web_search':
+        const searchResults = result.search_results || result;
         return (
-          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900">🌐 Web Search Results:</h4>
-            <p className="text-sm">{result.search_results?.results?.length || 0} results found</p>
-            {result.search_results?.summary && (
-              <p className="text-xs text-gray-600 mt-1">{result.search_results.summary}</p>
-            )}
-          </div>
+          <ToolCard 
+            icon={<Search className="h-5 w-5" />} 
+            title="🌐 Web Search Results"
+            bgColor="bg-blue-50" 
+            borderColor="border-blue-200" 
+            iconColor="text-blue-600"
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-blue-700">
+                <strong>Found {searchResults.results?.length || 0} results</strong>
+              </p>
+              {searchResults.summary && (
+                <div className="bg-white p-4 rounded-lg border border-blue-100">
+                  <h5 className="font-medium text-blue-800 mb-2">Summary:</h5>
+                  <p className="text-sm text-gray-700 leading-relaxed">{searchResults.summary}</p>
+                </div>
+              )}
+              {searchResults.results?.slice(0, 3).map((item: any, index: number) => (
+                <div key={index} className="bg-white p-3 rounded-lg border border-blue-100">
+                  <h6 className="font-medium text-gray-900 text-sm">{item.title}</h6>
+                  <p className="text-xs text-gray-600 mt-1">{item.snippet}</p>
+                  {item.url && (
+                    <a href={item.url} target="_blank" rel="noopener noreferrer" 
+                       className="inline-flex items-center mt-2 text-blue-600 hover:text-blue-800 text-xs">
+                      <ArrowLeft className="h-3 w-3 mr-1 rotate-180" />
+                      Visit Source
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ToolCard>
         );
 
       case 'fact_check':
+        const assessment = result.assessment || result.fact_check?.assessment || 'Unknown';
+        const confidence = result.confidence || result.fact_check?.confidence || 'Low';
+        const summary = result.summary || result.fact_check?.summary;
+        const evidence = result.evidence || [];
+        
+        const isVerified = assessment.toLowerCase().includes('true') || assessment.toLowerCase().includes('accurate');
+        const isDisputed = assessment.toLowerCase().includes('false') || assessment.toLowerCase().includes('inaccurate');
+        
         return (
-          <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
-            <h4 className="font-semibold text-orange-900">🔍 Fact Check Result:</h4>
-            <p className="text-sm">Assessment: <span className="font-medium">{result.assessment || result.fact_check?.assessment || 'Unknown'}</span></p>
-            <p className="text-xs text-orange-700">Confidence: {result.confidence || result.fact_check?.confidence || 'Low'}</p>
-            {(result.summary || result.fact_check?.summary) && (
-              <p className="text-sm mt-2 text-orange-800">{result.summary || result.fact_check?.summary}</p>
-            )}
-            {result.evidence && result.evidence.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs font-medium text-orange-700">Sources found: {result.evidence.length}</p>
+          <ToolCard 
+            icon={<CheckCircle className="h-5 w-5" />} 
+            title="🔍 Fact Check Results"
+            bgColor={isVerified ? "bg-green-50" : isDisputed ? "bg-red-50" : "bg-orange-50"} 
+            borderColor={isVerified ? "border-green-200" : isDisputed ? "border-red-200" : "border-orange-200"} 
+            iconColor={isVerified ? "text-green-600" : isDisputed ? "text-red-600" : "text-orange-600"}
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="text-sm text-gray-600">Assessment</p>
+                  <p className={`font-semibold ${
+                    isVerified ? 'text-green-700' : isDisputed ? 'text-red-700' : 'text-orange-700'
+                  }`}>
+                    {assessment}
+                  </p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="text-sm text-gray-600">Confidence</p>
+                  <p className="font-semibold text-gray-700">{confidence}</p>
+                </div>
               </div>
-            )}
-          </div>
+              
+              {summary && (
+                <div className="bg-white p-4 rounded-lg border">
+                  <h5 className="font-medium text-gray-800 mb-2">Analysis:</h5>
+                  <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+                </div>
+              )}
+              
+              {evidence.length > 0 && (
+                <div className="bg-white p-4 rounded-lg border">
+                  <h5 className="font-medium text-gray-800 mb-2">Sources found: {evidence.length}</h5>
+                  <div className="space-y-2">
+                    {evidence.slice(0, 2).map((source: any, index: number) => (
+                      <div key={index} className="text-sm text-gray-600 border-l-2 border-gray-200 pl-3">
+                        <p>{source.snippet || source.title || 'Source available'}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
 
       case 'wikipedia_search':
+        const wikiResults = result.search_results || result;
         return (
-          <div className="mt-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-            <h4 className="font-semibold text-indigo-900">📖 Wikipedia Search:</h4>
-            <p className="text-sm">{result.search_results?.total_found || 0} articles found</p>
-          </div>
+          <ToolCard 
+            icon={<BookOpen className="h-5 w-5" />} 
+            title="📖 Wikipedia Search"
+            bgColor="bg-indigo-50" 
+            borderColor="border-indigo-200" 
+            iconColor="text-indigo-600"
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-indigo-700">
+                <strong>Found {wikiResults.total_found || 0} articles</strong>
+              </p>
+              {wikiResults.articles?.slice(0, 3).map((article: any, index: number) => (
+                <div key={index} className="bg-white p-4 rounded-lg border border-indigo-100">
+                  <h5 className="font-medium text-gray-900 mb-2">{article.title}</h5>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {article.summary?.substring(0, 200)}...
+                  </p>
+                  {article.url && (
+                    <a href={article.url} target="_blank" rel="noopener noreferrer" 
+                       className="inline-flex items-center mt-2 text-indigo-600 hover:text-indigo-800 text-sm">
+                      <ArrowLeft className="h-3 w-3 mr-1 rotate-180" />
+                      Read Article
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ToolCard>
         );
 
       case 'solve_equation':
+        const solution = result.solution || result;
         return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">🧮 Equation Solution:</h4>
-            <p className="text-sm">Solution: <span className="font-medium">{result.solution?.solution}</span></p>
-            <p className="text-xs">Type: {result.solution?.equation_type}</p>
-          </div>
+          <ToolCard 
+            icon={<Calculator className="h-5 w-5" />} 
+            title="🧮 Equation Solution"
+            bgColor="bg-emerald-50" 
+            borderColor="border-emerald-200" 
+            iconColor="text-emerald-600"
+          >
+            <div className="space-y-3">
+              <div className="bg-white p-4 rounded-lg border border-emerald-100">
+                <p className="text-sm text-gray-600 mb-2">Solution:</p>
+                <p className="text-lg font-mono font-bold text-emerald-700">
+                  {solution.solution || "No solution found"}
+                </p>
+              </div>
+              <div className="bg-white p-3 rounded-lg border border-emerald-100">
+                <p className="text-sm text-gray-600">Equation Type:</p>
+                <p className="font-medium text-emerald-700">{solution.equation_type || "Unknown"}</p>
+              </div>
+              {solution.steps && solution.steps.length > 0 && (
+                <div className="bg-white p-4 rounded-lg border border-emerald-100">
+                  <h5 className="font-medium text-emerald-800 mb-2">Solution Steps:</h5>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                    {solution.steps.map((step: string, index: number) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
 
       case 'calculate':
+        const calculation = result.calculation || result;
+        const calcResult = calculation.result;
         return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">🧮 Calculation Result:</h4>
-            <p className="text-sm">Result: <span className="font-medium">{result.calculation?.result}</span></p>
-          </div>
+          <ToolCard 
+            icon={<Calculator className="h-5 w-5" />} 
+            title="🧮 Calculation Result"
+            bgColor="bg-emerald-50" 
+            borderColor="border-emerald-200" 
+            iconColor="text-emerald-600"
+          >
+            <div className="space-y-3">
+              <div className="bg-white p-4 rounded-lg border border-emerald-100">
+                <p className="text-sm text-gray-600 mb-2">Expression:</p>
+                <p className="font-mono text-gray-800">{calculation.expression || "Unknown"}</p>
+              </div>
+              <div className="bg-emerald-100 p-4 rounded-lg border border-emerald-200">
+                <p className="text-sm text-emerald-700 mb-2">Result:</p>
+                <p className="text-2xl font-mono font-bold text-emerald-800">
+                  {calcResult !== null && calcResult !== undefined ? calcResult : "Error"}
+                </p>
+              </div>
+              {calculation.error && (
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-red-700 text-sm">{calculation.error}</p>
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
 
-      case 'convert_units':
+      case 'pdf_summary':
+        const pdfSummary = result.summary || result;
         return (
-          <div className="mt-2 p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-            <h4 className="font-semibold text-cyan-900">🔄 Unit Conversion:</h4>
-            <p className="text-sm">{result.conversion?.conversion_string}</p>
-          </div>
+          <ToolCard 
+            icon={<FileText className="h-5 w-5" />} 
+            title="📄 PDF Summary"
+            bgColor="bg-cyan-50" 
+            borderColor="border-cyan-200" 
+            iconColor="text-cyan-600"
+          >
+            <div className="space-y-3">
+                             <div className="bg-white p-4 rounded-lg border border-cyan-100">
+                 <h5 className="font-medium text-cyan-800 mb-2">Summary:</h5>
+                 <p className="text-sm text-gray-700 leading-relaxed">
+                   {pdfSummary.summary || pdfSummary.content || "PDF processed successfully"}
+                 </p>
+               </div>
+               {pdfSummary.metadata && (
+                 <div className="grid grid-cols-2 gap-3">
+                   <div className="bg-white p-3 rounded-lg border border-cyan-100">
+                     <p className="text-sm text-gray-600">Pages</p>
+                     <p className="font-semibold text-cyan-700">{pdfSummary.metadata.pages}</p>
+                   </div>
+                   <div className="bg-white p-3 rounded-lg border border-cyan-100">
+                     <p className="text-sm text-gray-600">Word Count</p>
+                     <p className="font-semibold text-cyan-700">{pdfSummary.metadata.word_count}</p>
+                   </div>
+                 </div>
+               )}
+            </div>
+          </ToolCard>
         );
-
-      case 'statistics':
-        return (
-          <div className="mt-2 p-3 bg-teal-50 rounded-lg border border-teal-200">
-            <h4 className="font-semibold text-teal-900">📊 Statistics:</h4>
-            <p className="text-sm">Data points: {result.statistics?.data_count}</p>
-            {result.statistics?.statistics?.mean && (
-              <p className="text-xs">Mean: {result.statistics.statistics.mean.toFixed(2)}</p>
-            )}
-          </div>
-        );
-      
+       
       default:
         return (
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="font-semibold text-gray-900">🔧 Tool Result:</h4>
-            <p className="text-sm">{result.summary}</p>
-          </div>
+          <ToolCard 
+            icon={<Settings className="h-5 w-5" />} 
+            title="🔧 Tool Result"
+            bgColor="bg-gray-50" 
+            borderColor="border-gray-200" 
+            iconColor="text-gray-600"
+          >
+            <div className="bg-white p-4 rounded-lg border border-gray-100">
+              <p className="text-sm text-gray-700">
+                {result.summary || result.result || "Tool executed successfully"}
+              </p>
+              {result.error && (
+                <div className="mt-3 bg-red-50 p-3 rounded border border-red-200">
+                  <p className="text-red-700 text-sm">{result.error}</p>
+                </div>
+              )}
+            </div>
+          </ToolCard>
         );
     }
   };
@@ -578,139 +845,6 @@ const TaskChat: React.FC<TaskChatProps> = ({
     } finally {
       setIsLoading(false);
       setShowTaskComplete(false);
-    }
-  };
-
-  const renderToolResult = (result: any) => {
-    if (!result) return null;
-
-    switch (result.tool) {
-      case 'research_paper':
-        return (
-          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900">📚 Found {result.papers_found} papers:</h4>
-            {result.papers?.slice(0, 3).map((paper: any, index: number) => (
-              <div key={index} className="mt-2 p-2 bg-white rounded border">
-                <h5 className="font-medium text-sm">{paper.title}</h5>
-                <p className="text-xs text-gray-600">{paper.shortCitation}</p>
-                {paper.abstract && (
-                  <p className="text-xs text-gray-700 mt-1">{paper.abstract.substring(0, 200)}...</p>
-                )}
-              </div>
-            ))}
-          </div>
-        );
-      
-      case 'generate_citation':
-        return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">📄 BibTeX Citation:</h4>
-            <pre className="text-xs bg-white p-2 rounded border mt-2 overflow-x-auto">
-              {result.citation}
-            </pre>
-          </div>
-        );
-      
-      case 'ai_detection':
-        return (
-          <div className="mt-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-            <h4 className="font-semibold text-yellow-900">🔍 AI Detection Results:</h4>
-            <p className="text-sm">
-              AI Probability: <span className="font-medium">{(result.ai_probability * 100).toFixed(1)}%</span>
-            </p>
-            <p className="text-xs text-gray-600">{result.explanation}</p>
-          </div>
-        );
-
-      case 'grammar_check':
-        return (
-          <div className="mt-2 p-3 bg-purple-50 rounded-lg border border-purple-200">
-            <h4 className="font-semibold text-purple-900">✍️ Grammar & Style Analysis:</h4>
-            <p className="text-sm">Issues found: {result.analysis?.issues?.length || 0}</p>
-            <p className="text-xs">Readability: {result.analysis?.readability_score?.level}</p>
-            <p className="text-xs">Academic tone: {result.analysis?.academic_tone_score?.level}</p>
-          </div>
-        );
-
-      case 'web_search':
-        return (
-          <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <h4 className="font-semibold text-blue-900">🌐 Web Search Results:</h4>
-            <p className="text-sm">{result.search_results?.results?.length || 0} results found</p>
-            {result.search_results?.summary && (
-              <p className="text-xs text-gray-600 mt-1">{result.search_results.summary}</p>
-            )}
-          </div>
-        );
-
-      case 'fact_check':
-        return (
-          <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
-            <h4 className="font-semibold text-orange-900">🔍 Fact Check Result:</h4>
-            <p className="text-sm">Assessment: <span className="font-medium">{result.assessment || result.fact_check?.assessment || 'Unknown'}</span></p>
-            <p className="text-xs text-orange-700">Confidence: {result.confidence || result.fact_check?.confidence || 'Low'}</p>
-            {(result.summary || result.fact_check?.summary) && (
-              <p className="text-sm mt-2 text-orange-800">{result.summary || result.fact_check?.summary}</p>
-            )}
-            {result.evidence && result.evidence.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs font-medium text-orange-700">Sources found: {result.evidence.length}</p>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'wikipedia_search':
-        return (
-          <div className="mt-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-            <h4 className="font-semibold text-indigo-900">📖 Wikipedia Search:</h4>
-            <p className="text-sm">{result.search_results?.total_found || 0} articles found</p>
-          </div>
-        );
-
-      case 'solve_equation':
-        return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">🧮 Equation Solution:</h4>
-            <p className="text-sm">Solution: <span className="font-medium">{result.solution?.solution}</span></p>
-            <p className="text-xs">Type: {result.solution?.equation_type}</p>
-          </div>
-        );
-
-      case 'calculate':
-        return (
-          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-900">🧮 Calculation Result:</h4>
-            <p className="text-sm">Result: <span className="font-medium">{result.calculation?.result}</span></p>
-          </div>
-        );
-
-      case 'convert_units':
-        return (
-          <div className="mt-2 p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-            <h4 className="font-semibold text-cyan-900">🔄 Unit Conversion:</h4>
-            <p className="text-sm">{result.conversion?.conversion_string}</p>
-          </div>
-        );
-
-      case 'statistics':
-        return (
-          <div className="mt-2 p-3 bg-teal-50 rounded-lg border border-teal-200">
-            <h4 className="font-semibold text-teal-900">📊 Statistics:</h4>
-            <p className="text-sm">Data points: {result.statistics?.data_count}</p>
-            {result.statistics?.statistics?.mean && (
-              <p className="text-xs">Mean: {result.statistics.statistics.mean.toFixed(2)}</p>
-            )}
-          </div>
-        );
-      
-      default:
-        return (
-          <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-            <h4 className="font-semibold text-gray-900">🔧 Tool Result:</h4>
-            <p className="text-sm">{result.summary}</p>
-          </div>
-        );
     }
   };
 

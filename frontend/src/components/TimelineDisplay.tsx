@@ -168,404 +168,271 @@ export default function TimelineDisplay({
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* Today's Tasks Section - Prominent at top */}
-      {timelineData.timeline.timeline.todays_tasks && timelineData.timeline.timeline.todays_tasks.length > 0 && (
-        <div className="card border-l-4 border-l-primary-600 bg-gradient-to-r from-primary-50 to-primary-25">
-          <div className="card-header">
-            <h2 className="text-xl font-bold text-primary-900 flex items-center">
-              <CheckSquare className="h-6 w-6 mr-2 text-primary-600" />
-              Today's Tasks ({new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })})
-            </h2>
-            <p className="text-sm text-primary-700 mt-1">Focus on these tasks today to stay on track</p>
-          </div>
-          
-          <div className="space-y-4">
-            {timelineData.timeline.timeline.todays_tasks.map((task: TimelineTask, index: number) => (
-              <div key={index} className="p-4 bg-white rounded-lg border border-primary-200 shadow-sm">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                        {index + 1}
-                      </div>
-                      <h3 className="font-semibold text-secondary-900">{task.title}</h3>
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800">
-                        Priority {task.priority}
-                      </span>
-                    </div>
-                    
-                    <p className="text-sm text-secondary-600 mb-3 ml-11">{task.description}</p>
-                    
-                    <div className="flex items-center space-x-4 ml-11 text-sm text-secondary-500">
-                      <div className="flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        {task.estimated_hours}h ({task.focus_sessions || Math.ceil(task.estimated_hours * 2)} × {Math.floor((task.estimated_hours / (task.focus_sessions || Math.ceil(task.estimated_hours * 2))) * 60)}min sessions)
-                      </div>
-                      {task.deliverable && (
-                        <div className="flex items-center">
-                          <Target className="h-4 w-4 mr-1" />
-                          {task.deliverable}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleStartWorking(task)}
-                    className="btn-primary flex items-center space-x-2 ml-4"
-                  >
-                    <Play className="h-4 w-4" />
-                    <span>Start Working</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          {timelineData.timeline.timeline.todays_tasks.length === 0 && (
-            <div className="text-center py-8 text-secondary-500">
-              <CheckCircle className="h-12 w-12 mx-auto mb-3 text-success-500" />
-              <p className="font-medium">No tasks scheduled for today!</p>
-              <p className="text-sm">Great job staying on track, or check upcoming tasks.</p>
-            </div>
-          )}
-        </div>
+    <>
+      {/* Task Chat Full Screen View */}
+      {showTaskChat && currentTask && (
+        <TaskChat
+          task={currentTask}
+          onBack={handleBackFromTask}
+          onComplete={handleTaskComplete}
+          currentProjectId={currentProjectId}
+          userName={timelineData.user_info.name}
+        />
       )}
-
-      {/* Action Buttons */}
-      <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <User className="h-5 w-5 text-secondary-600" />
-            <span className="font-medium text-secondary-900">{timelineData.user_info.name}</span>
-            <span className="text-secondary-500">•</span>
-            <span className="text-secondary-600">{timelineData.user_info.thesis_topic}</span>
-          </div>
-          
-          <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={onBack}
-              className="btn-secondary flex items-center"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Projects
-            </button>
-            
-            <button 
-              onClick={handleCreateAndSyncNotion}
-              disabled={loadingNotion}
-              className="btn-accent flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {loadingNotion ? 'Creating...' : (notionWorkspace ? 'Sync to Notion' : 'Create Notion Workspace')}
-            </button>
-            
-            {timelineData.timeline.timeline.daily_assignments && (
-              <button 
-                onClick={onEmailTest}
-                disabled={loadingEmail}
-                className="btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                {loadingEmail ? 'Sending...' : 'Send Progress Email'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Notion Status */}
-        {notionWorkspace && (
-          <div className="mt-4 p-3 bg-success-50 border border-success-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-success-600" />
-                <span className="text-success-800 font-medium">Notion Workspace Active</span>
-              </div>
-              <div className="flex gap-2">
-                <a 
-                  href={notionWorkspace.main_page?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-success-600 hover:text-success-800 text-sm"
-                >
-                  📄 Main Page
-                </a>
-                <a 
-                  href={notionWorkspace.task_database?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-success-600 hover:text-success-800 text-sm"
-                >
-                  📊 Tasks
-                </a>
-                <a 
-                  href={notionWorkspace.milestone_database?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-success-600 hover:text-success-800 text-sm"
-                >
-                  🎯 Milestones
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Timeline Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-primary-600">{timeline.phases.length}</div>
-          <p className="text-sm text-secondary-600">Phases</p>
-        </div>
-        
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-accent-600">
-            {timeline.phases.reduce((total, phase) => total + phase.tasks.length, 0)}
-          </div>
-          <p className="text-sm text-secondary-600">Total Tasks</p>
-        </div>
-        
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-success-600">
-            {Math.round(timeline.phases.reduce((total, phase) => total + phase.estimated_hours, 0))}
-          </div>
-          <p className="text-sm text-secondary-600">Total Hours</p>
-        </div>
-        
-        <div className="card text-center">
-          <div className="text-2xl font-bold text-warning-600">
-            {Math.ceil((new Date(timelineData.user_info.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
-          </div>
-          <p className="text-sm text-secondary-600">Days Left</p>
-        </div>
-      </div>
-
-      {/* Milestones */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="text-xl font-bold text-secondary-900 flex items-center">
-            <Target className="h-5 w-5 mr-2 text-primary-600" />
-            Key Milestones
-          </h2>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {timeline.milestones.map((milestone, index) => (
-            <div key={index} className="flex items-start space-x-3 p-4 bg-primary-50 rounded-lg border border-primary-200">
-              <div className="flex-shrink-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {index + 1}
-              </div>
-              <div>
-                <h3 className="font-semibold text-secondary-900">{milestone.name}</h3>
-                <p className="text-sm text-secondary-600 mb-2">{milestone.description}</p>
-                <div className="flex items-center text-sm text-primary-700">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {format(parseISO(milestone.target_date), 'MMM dd, yyyy')}
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm text-secondary-600">Deliverables:</p>
-                  <ul className="text-sm text-secondary-700 ml-4">
-                    {milestone.deliverables.map((deliverable, idx) => (
-                      <li key={idx} className="list-disc">{deliverable}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Phases */}
-      <div className="space-y-6">
-        {timeline.phases.map((phase, phaseIndex) => {
-          const phaseStatus = getPhaseStatus(phase.start_date, phase.end_date);
-          const isExpanded = expandedPhases.has(phaseIndex);
-          
-          return (
-            <div key={phaseIndex} className="card">
-              <div 
-                className="cursor-pointer"
-                onClick={() => togglePhase(phaseIndex)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
-                      phaseStatus === 'completed' ? 'bg-success-600' :
-                      phaseStatus === 'current' ? 'bg-warning-600' :
-                      'bg-secondary-400'
-                    }`}>
-                      {phaseStatus === 'completed' ? (
-                        <CheckCircle className="h-6 w-6" />
-                      ) : phaseStatus === 'current' ? (
-                        <AlertCircle className="h-6 w-6" />
-                      ) : (
-                        <Circle className="h-6 w-6" />
-                      )}
-                    </div>
-                    
-                    <div>
-                      <h3 className="text-lg font-semibold text-secondary-900">
-                        Phase {phaseIndex + 1}: {phase.name}
-                      </h3>
-                      <p className="text-sm text-secondary-600">{phase.description}</p>
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-secondary-500">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {format(parseISO(phase.start_date), 'MMM dd')} - {format(parseISO(phase.end_date), 'MMM dd, yyyy')}
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {phase.estimated_hours} hours
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      
+      {/* Timeline View */}
+      {!showTaskChat && (
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+          <div className="card-modern max-w-6xl mx-auto m-6 p-8 bg-white/95 backdrop-blur-sm">
+            {/* Today's Tasks Section - Prominent at top */}
+            {timelineData.timeline.timeline.todays_tasks && timelineData.timeline.timeline.todays_tasks.length > 0 && (
+              <div className="card-modern border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 mb-8">
+                <div className="p-6">
+                  <h2 className="text-2xl font-bold text-gradient mb-2 flex items-center">
+                    <CheckSquare className="h-7 w-7 mr-3 text-blue-600" />
+                    Today's Tasks ({new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })})
+                  </h2>
+                  <p className="text-blue-700 mb-6">Focus on these tasks today to stay on track</p>
                   
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      phaseStatus === 'completed' ? 'bg-success-100 text-success-800' :
-                      phaseStatus === 'current' ? 'bg-warning-100 text-warning-800' :
-                      'bg-secondary-100 text-secondary-800'
-                    }`}>
-                      {phaseStatus === 'completed' ? 'Completed' :
-                       phaseStatus === 'current' ? 'In Progress' :
-                       'Upcoming'}
-                    </span>
-                    
-                    {isExpanded ? (
-                      <ChevronUp className="h-5 w-5 text-secondary-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-secondary-400" />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="mt-6 pt-6 border-t border-secondary-200">
                   <div className="space-y-4">
-                    {phase.tasks.map((task, taskIndex) => {
-                      const taskStatus = getTaskStatus(task.due_date);
-                      
-                      return (
-                        <div key={taskIndex} className="p-4 bg-secondary-50 rounded-lg border border-secondary-200">
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3 flex-1">
-                              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
-                                taskStatus === 'overdue' ? 'bg-danger-600' :
-                                taskStatus === 'today' ? 'bg-warning-600' :
-                                taskStatus === 'upcoming' ? 'bg-primary-600' :
-                                'bg-secondary-400'
-                              }`}>
-                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                    {timelineData.timeline.timeline.todays_tasks.map((task: TimelineTask, index: number) => (
+                      <div key={index} className="card-modern p-6 bg-white border border-blue-200 hover:shadow-lg transition-all duration-200">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-4 mb-3">
+                              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-lg">
+                                {index + 1}
                               </div>
-                              
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-3 mb-2">
-                                  <h4 className="font-medium text-secondary-900">{task.title}</h4>
-                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                    taskStatus === 'overdue' ? 'bg-danger-100 text-danger-800' :
-                                    taskStatus === 'today' ? 'bg-warning-100 text-warning-800' :
-                                    taskStatus === 'upcoming' ? 'bg-primary-100 text-primary-800' :
-                                    'bg-secondary-100 text-secondary-800'
-                                  }`}>
-                                    Priority {task.priority}
-                                  </span>
-                                </div>
-                                
-                                <p className="text-sm text-secondary-600 mb-3">{task.description}</p>
-                                
-                                <div className="flex flex-wrap items-center gap-4 text-sm text-secondary-500">
-                                  <div className="flex items-center">
-                                    <Calendar className="h-4 w-4 mr-1" />
-                                    Due: {format(parseISO(task.due_date), 'MMM dd, yyyy')}
-                                  </div>
-                                  <div className="flex items-center">
-                                    <Clock className="h-4 w-4 mr-1" />
-                                    {task.estimated_hours}h
-                                  </div>
-                                  {task.focus_sessions && (
-                                    <div className="flex items-center">
-                                      <Target className="h-4 w-4 mr-1" />
-                                      {task.focus_sessions} sessions
-                                    </div>
-                                  )}
-                                  {task.assigned_date && (
-                                    <div className="flex items-center">
-                                      <Calendar className="h-4 w-4 mr-1" />
-                                      Assigned: {format(parseISO(task.assigned_date), 'MMM dd')}
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {task.deliverable && (
-                                  <div className="mt-2 p-2 bg-primary-50 rounded border border-primary-200">
-                                    <span className="text-sm font-medium text-primary-800">Deliverable: </span>
-                                    <span className="text-sm text-primary-700">{task.deliverable}</span>
-                                  </div>
-                                )}
-                                
-                                {task.dependencies && task.dependencies.length > 0 && (
-                                  <div className="mt-2">
-                                    <span className="text-sm text-secondary-500">Dependencies: </span>
-                                    <span className="text-sm text-secondary-700">
-                                      {task.dependencies.join(', ')}
-                                    </span>
-                                  </div>
-                                )}
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-900">{task.title}</h4>
+                                <p className="text-gray-600 text-sm">{task.description}</p>
                               </div>
                             </div>
                             
-                            <button 
-                              onClick={() => handleStartWorking(task)}
-                              className={`btn-sm flex items-center space-x-2 ml-4 ${
-                                taskStatus === 'today' ? 'btn-primary' : 
-                                taskStatus === 'overdue' ? 'btn-danger' : 
-                                'btn-secondary'
-                              }`}
-                            >
-                              <Play className="h-3 w-3" />
-                              <span>Start</span>
-                            </button>
+                            <div className="flex items-center space-x-6 ml-14 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-2 text-blue-500" />
+                                <span>{task.estimated_hours}h ({task.focus_sessions || Math.ceil(task.estimated_hours * 2)} × {Math.floor((task.estimated_hours / (task.focus_sessions || Math.ceil(task.estimated_hours * 2))) * 60)}min sessions)</span>
+                              </div>
+                              {task.deliverable && (
+                                <div className="flex items-center">
+                                  <Target className="h-4 w-4 mr-2 text-green-500" />
+                                  <span>{task.deliverable}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          
+                          <button 
+                            onClick={() => handleStartWorking(task)}
+                            className="btn-primary flex items-center space-x-2"
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>Start Working</span>
+                          </button>
                         </div>
-                      );
-                    })}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {timelineData.timeline.timeline.todays_tasks.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                      <CheckCircle className="h-16 w-16 mx-auto mb-4 text-green-500" />
+                      <p className="text-lg font-medium">No tasks scheduled for today!</p>
+                      <p className="text-sm">Great job staying on track, or check upcoming tasks.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="card-modern p-6 mb-8 bg-gradient-to-r from-gray-50 to-blue-50">
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-900 text-lg">{timelineData.user_info.name}</span>
+                    <p className="text-gray-600 text-sm">{timelineData.user_info.thesis_topic}</p>
                   </div>
                 </div>
-              )}
+                
+                <div className="flex flex-wrap gap-3">
+                  <button 
+                    onClick={onBack}
+                    className="btn-secondary flex items-center space-x-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span>Back to Setup</span>
+                  </button>
+                  
+                  {notionWorkspace ? (
+                    <button 
+                      onClick={handleCreateAndSyncNotion}
+                      disabled={loadingNotion}
+                      className="btn-success flex items-center space-x-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>{loadingNotion ? 'Syncing...' : 'Sync to Notion'}</span>
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={handleCreateAndSyncNotion}
+                      disabled={loadingNotion}
+                      className="btn-primary flex items-center space-x-2"
+                    >
+                      <FileText className="h-4 w-4" />
+                      <span>{loadingNotion ? 'Creating...' : 'Create Notion Workspace'}</span>
+                    </button>
+                  )}
+                  
+                  {timelineData.timeline.timeline.daily_assignments && (
+                    <button 
+                      onClick={onEmailTest}
+                      disabled={loadingEmail}
+                      className="btn-secondary flex items-center space-x-2"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span>{loadingEmail ? 'Sending...' : 'Send Progress Email'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Footer Info */}
-      <div className="card bg-secondary-50">
-        <div className="text-center">
-          <p className="text-sm text-secondary-600 mb-2">
-            Timeline generated on {format(parseISO(metadata.generated_at), 'MMM dd, yyyy \'at\' h:mm a')}
-          </p>
-          <p className="text-xs text-secondary-500">
-            Buffer time of {Math.round(metadata.buffer_applied * 100)}% applied for flexibility
-          </p>
-        </div>
-      </div>
+            {/* Timeline Phases */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gradient mb-6">📅 Complete Timeline Overview</h2>
+              
+              {timelineData.timeline.timeline.phases.map((phase, phaseIndex) => {
+                const isExpanded = expandedPhases.has(phaseIndex);
+                const phaseStatus = getPhaseStatus(phase.start_date, phase.end_date);
+                
+                return (
+                  <div key={phaseIndex} className="card-modern overflow-hidden">
+                    <div 
+                      className="p-6 cursor-pointer hover:bg-gray-50 transition-colors duration-200"
+                      onClick={() => togglePhase(phaseIndex)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
+                            phaseStatus === 'completed' ? 'bg-green-100 text-green-600' :
+                            phaseStatus === 'current' ? 'bg-orange-100 text-orange-600' :
+                            'bg-gray-100 text-gray-400'
+                          }`}>
+                            {phaseStatus === 'completed' ? (
+                              <CheckCircle className="h-6 w-6" />
+                            ) : phaseStatus === 'current' ? (
+                              <AlertCircle className="h-6 w-6" />
+                            ) : (
+                              <Circle className="h-6 w-6" />
+                            )}
+                          </div>
+                          
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">
+                              Phase {phaseIndex + 1}: {phase.name}
+                            </h3>
+                            <p className="text-gray-600 mt-1">{phase.description}</p>
+                            <div className="flex items-center space-x-6 mt-3 text-sm text-gray-500">
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-2 text-blue-500" />
+                                <span>{format(parseISO(phase.start_date), 'MMM dd')} - {format(parseISO(phase.end_date), 'MMM dd, yyyy')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-2 text-green-500" />
+                                <span>{phase.estimated_hours} hours</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-3 py-1 text-sm font-medium rounded-full ${
+                            phaseStatus === 'completed' ? 'bg-green-100 text-green-800' :
+                            phaseStatus === 'current' ? 'bg-orange-100 text-orange-800' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {phaseStatus === 'completed' ? 'Completed' :
+                             phaseStatus === 'current' ? 'In Progress' :
+                             'Upcoming'}
+                          </span>
+                          
+                          {isExpanded ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-      {/* Task Chat Modal */}
-      {showTaskChat && currentTask && (
-        <div className="fixed inset-0 z-50">
-          <TaskChat
-            task={currentTask}
-            onBack={handleBackFromTask}
-            onComplete={handleTaskComplete}
-            currentProjectId={currentProjectId}
-            userName={timelineData.user_info.name}
-          />
+                    {isExpanded && (
+                      <div className="px-6 pb-6 border-t border-gray-100 bg-gray-50/50">
+                        <div className="pt-6 space-y-4">
+                                                      {phase.tasks.map((task, taskIndex) => {
+                              const taskStatus = getTaskStatus(task.due_date);
+                              
+                              return (
+                                <div key={taskIndex} className="card-modern p-4 bg-white border border-gray-200">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex items-start space-x-3 flex-1">
+                                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                        taskStatus === 'today' ? 'bg-blue-100 text-blue-700' :
+                                        taskStatus === 'overdue' ? 'bg-red-100 text-red-700' :
+                                        taskStatus === 'upcoming' ? 'bg-green-100 text-green-700' :
+                                        'bg-gray-100 text-gray-600'
+                                      }`}>
+                                      {taskIndex + 1}
+                                    </div>
+                                    
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                                      <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                                      
+                                      <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
+                                        <div className="flex items-center">
+                                          <Calendar className="h-4 w-4 mr-1 text-blue-500" />
+                                          <span>Due: {format(parseISO(task.due_date), 'MMM dd, yyyy')}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                          <Clock className="h-4 w-4 mr-1 text-green-500" />
+                                          <span>{task.estimated_hours}h</span>
+                                        </div>
+                                        {task.deliverable && (
+                                          <div className="flex items-center">
+                                            <Target className="h-4 w-4 mr-1 text-purple-500" />
+                                            <span className="truncate max-w-xs">{task.deliverable}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <button 
+                                    onClick={() => handleStartWorking(task)}
+                                    className="btn-primary ml-4 flex items-center space-x-2"
+                                  >
+                                    <Play className="h-4 w-4" />
+                                    <span>Start</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 } 
