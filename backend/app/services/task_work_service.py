@@ -538,7 +538,7 @@ Provide a helpful, educational response that supports their learning. If tool re
                 result = {
                     "tool": "pdf_summary",
                     "file_path": file_path,
-                    "summary": summary,
+                    "content": summary,
                     "status": status,
                     "summary": f"PDF summarized: {status}"
                 }

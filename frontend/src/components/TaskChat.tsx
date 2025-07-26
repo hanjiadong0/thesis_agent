@@ -559,7 +559,7 @@ const TaskChat: React.FC<TaskChatProps> = ({
       case 'fact_check':
         const assessment = result.assessment || result.fact_check?.assessment || 'Unknown';
         const confidence = result.confidence || result.fact_check?.confidence || 'Low';
-        const summary = result.summary || result.fact_check?.summary;
+        const factSummary = result.summary || result.fact_check?.summary;
         const evidence = result.evidence || [];
         
         const isVerified = assessment.toLowerCase().includes('true') || assessment.toLowerCase().includes('accurate');
@@ -589,10 +589,10 @@ const TaskChat: React.FC<TaskChatProps> = ({
                 </div>
               </div>
               
-              {summary && (
+              {factSummary && (
                 <div className="bg-white p-4 rounded-lg border">
                   <h5 className="font-medium text-gray-800 mb-2">Analysis:</h5>
-                  <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{factSummary}</p>
                 </div>
               )}
               
@@ -722,12 +722,19 @@ const TaskChat: React.FC<TaskChatProps> = ({
             iconColor="text-cyan-600"
           >
             <div className="space-y-3">
-                             <div className="bg-white p-4 rounded-lg border border-cyan-100">
-                 <h5 className="font-medium text-cyan-800 mb-2">Summary:</h5>
-                 <p className="text-sm text-gray-700 leading-relaxed">
-                   {pdfSummary.summary || pdfSummary.content || "PDF processed successfully"}
-                 </p>
-               </div>
+              <div className="bg-white p-4 rounded-lg border border-cyan-100">
+                <h5 className="font-medium text-cyan-800 mb-2">Summary:</h5>
+                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                  {pdfSummary.content || pdfSummary.summary || "PDF processed successfully"}
+                </div>
+              </div>
+              {pdfSummary.status && (
+                <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-200">
+                  <p className="text-sm text-cyan-700">
+                    <strong>Status:</strong> {pdfSummary.status}
+                  </p>
+                </div>
+              )}
                {pdfSummary.metadata && (
                  <div className="grid grid-cols-2 gap-3">
                    <div className="bg-white p-3 rounded-lg border border-cyan-100">
