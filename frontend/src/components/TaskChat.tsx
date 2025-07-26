@@ -501,7 +501,7 @@ const TaskChat: React.FC<TaskChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-white">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200 p-4">
         <div className="flex items-center justify-between">

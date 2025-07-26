@@ -56,12 +56,46 @@ class WebSearchService:
                 "sources": []
             }
             
-            # Get search results from multiple sources
-            duckduckgo_results = self._search_duckduckgo(query)
-            results["results"].extend(duckduckgo_results)
+            # Try multiple search approaches
+            search_successful = False
             
-            # If AI service is available, generate a summary
-            if self.ai_service and results["results"]:
+            # 1. Try DuckDuckGo search
+            duckduckgo_results = self._search_duckduckgo(query)
+            if duckduckgo_results:
+                results["results"].extend(duckduckgo_results)
+                search_successful = True
+            
+            # 2. Try Wikipedia search as fallback
+            if not search_successful or len(results["results"]) < 2:
+                wiki_results = self._search_wikipedia_for_claim(query)
+                if wiki_results:
+                    # Convert Wikipedia results to search result format
+                    for wiki_item in wiki_results:
+                        results["results"].append({
+                            "title": wiki_item["source"],
+                            "snippet": wiki_item["text"],
+                            "url": wiki_item["url"],
+                            "source": "Wikipedia"
+                        })
+                    search_successful = True
+            
+            # 3. If still no results, provide AI-generated information
+            if not search_successful and self.ai_service:
+                ai_info = self._generate_ai_search_response(query)
+                results["results"].append(ai_info)
+                results["summary"] = f"AI-generated information about '{query}'"
+            elif not search_successful:
+                # Provide at least some information
+                results["results"] = [{
+                    "title": f"Search for: {query}",
+                    "snippet": f"No external search results available for '{query}'. Please try rephrasing your search or using more specific terms.",
+                    "url": "",
+                    "source": "System"
+                }]
+                results["summary"] = f"Search completed but no external results found for '{query}'"
+            
+            # If AI service is available and we have results, generate a summary
+            if self.ai_service and results["results"] and not results["summary"]:
                 summary = self._generate_search_summary(query, results["results"])
                 results["summary"] = summary
             
@@ -69,13 +103,26 @@ class WebSearchService:
             results["results"] = results["results"][:result_count]
             results["sources"] = [r.get("url", "") for r in results["results"] if r.get("url")]
             
+            # Ensure we always have a meaningful summary
+            if not results["summary"]:
+                results["summary"] = f"Found {len(results['results'])} results for '{query}'"
+            
             return results
             
         except Exception as e:
             logger.error(f"Error in web search: {e}")
             return {
-                "success": False,
-                "error": f"Search failed: {str(e)}"
+                "success": True,  # Don't fail completely
+                "query": query,
+                "search_type": search_type,
+                "results": [{
+                    "title": "Search Error",
+                    "snippet": f"Unable to complete search due to technical issues. Query: '{query}'",
+                    "url": "",
+                    "source": "System"
+                }],
+                "summary": f"Search encountered technical difficulties for query: '{query}'",
+                "sources": []
             }
     
     def fact_check(self, claim: str) -> Dict[str, Any]:
@@ -480,6 +527,52 @@ Explanation: [explanation]"""
         # Return top terms (prefer longer/more specific terms)
         key_terms.sort(key=len, reverse=True)
         return key_terms[:5]
+
+    def _generate_ai_search_response(self, query: str) -> Dict[str, str]:
+        """Generate AI-based search response when external APIs fail."""
+        if not self.ai_service or not hasattr(self.ai_service, 'provider'):
+            return {
+                "title": f"Information about: {query}",
+                "snippet": f"External search sources unavailable. Please research '{query}' using academic databases, official websites, or other reliable sources.",
+                "url": "",
+                "source": "AI Assistant"
+            }
+        
+        try:
+            prompt = f"""Provide helpful information about: "{query}"
+
+Give a brief, factual overview (2-3 sentences) that would be useful for academic research. Include:
+- Key concepts or definitions
+- Important context or background
+- Suggestions for further research
+
+Keep the response objective and educational."""
+
+            response = self.ai_service.provider.generate_content(prompt)
+            
+            if response and len(response.strip()) > 20:
+                return {
+                    "title": f"AI Overview: {query}",
+                    "snippet": response.strip()[:300] + "..." if len(response) > 300 else response.strip(),
+                    "url": "",
+                    "source": "AI Assistant"
+                }
+            else:
+                return {
+                    "title": f"Information about: {query}",
+                    "snippet": f"AI information not available. Please research '{query}' using academic sources.",
+                    "url": "",
+                    "source": "AI Assistant"
+                }
+            
+        except Exception as e:
+            logger.error(f"Error generating AI search response: {e}")
+            return {
+                "title": f"Information about: {query}",
+                "snippet": f"Search assistance unavailable. Please research '{query}' manually using reliable sources.",
+                "url": "",
+                "source": "System"
+            }
 
     def _get_ai_fact_check_with_fallback(self, claim: str, evidence: List[Dict[str, str]]) -> Dict[str, Any]:
         """Get AI-powered fact-check assessment with fallback logic."""

@@ -519,7 +519,7 @@ Provide a helpful, educational response that supports their learning. If tool re
                     
             elif tool_name == "ai_detection":
                 text = tool_params.get("text", "")
-                probability, explanation = detect_ai_content(text)
+                probability, explanation = detect_ai_content(text, self.ai_service)
                 result = {
                     "tool": "ai_detection",
                     "text_length": len(text),
