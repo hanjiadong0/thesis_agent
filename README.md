@@ -33,9 +33,10 @@ cd ..
 cp env.template .env
 ```
 Edit `.env` file with your API keys:
-- `GEMINI_API_KEY` - Google Gemini API key
+- `GEMINI_API_KEY` - Google Gemini API key (optional, for cloud AI)
 - `NOTION_TOKEN` - Notion integration token
-- `GMAIL_EMAIL` and `GMAIL_APP_PASSWORD` - For email notifications
+- `EMAIL_USER` and `EMAIL_PASSWORD` - Gmail credentials for notifications
+- `DATABASE_URL` - Database connection (SQLite by default, PostgreSQL for production)
 
 6. **Install Ollama (optional, for local AI)**
 ```bash
@@ -69,6 +70,7 @@ Go to `http://localhost:3000`
 - Connect to Notion for task management
 - Work on tasks with 18 built-in academic tools
 - Email progress updates
+- SQLite database (development) or PostgreSQL (production)
 
 ## Tools Available
 
