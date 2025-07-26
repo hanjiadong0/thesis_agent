@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, AlertTriangle, CheckCircle, Settings, FileText, Search, Download, Image, Calculator } from 'lucide-react';
+import { Send, ArrowLeft, AlertTriangle, CheckCircle, Settings, FileText, Search, Download, Image, Calculator, Upload } from 'lucide-react';
 import { apiService } from '../services/api';
 
 interface TaskChatProps {
@@ -52,6 +52,8 @@ const TaskChat: React.FC<TaskChatProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [availableTools, setAvailableTools] = useState<AvailableTool[]>([]);
   const [showTools, setShowTools] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<string>('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [deliverableText, setDeliverableText] = useState('');
   const [showDeliverableModal, setShowDeliverableModal] = useState(false);
   const [ethicsAlerts, setEthicsAlerts] = useState<number>(0);
@@ -117,10 +119,15 @@ const TaskChat: React.FC<TaskChatProps> = ({
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
+    let messageContent = inputMessage;
+    if (selectedTool) {
+      messageContent = `[Using ${getToolDisplayName(selectedTool)}] ${inputMessage}`;
+    }
+
     const userMessage: ChatMessage = {
       id: `user_${Date.now()}`,
       type: 'user',
-      content: inputMessage,
+      content: messageContent,
       timestamp: new Date()
     };
 
@@ -129,27 +136,33 @@ const TaskChat: React.FC<TaskChatProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await apiService.sendTaskMessage({
-        task_id: taskId,
-        message: inputMessage
-      });
+      // If a specific tool is selected, use that tool
+      if (selectedTool) {
+        await handleToolExecution(selectedTool, inputMessage);
+      } else {
+        // Regular AI chat
+        const response = await apiService.sendTaskMessage({
+          task_id: taskId,
+          message: inputMessage
+        });
 
-      if (response.success) {
-        const aiMessage: ChatMessage = {
-          id: `ai_${Date.now()}`,
-          type: 'ai',
-          content: response.ai_response,
-          timestamp: new Date(),
-          ethics_score: response.ethics_score,
-          tool_result: response.tool_result,
-          intervention: response.intervention
-        };
+        if (response.success) {
+          const aiMessage: ChatMessage = {
+            id: `ai_${Date.now()}`,
+            type: 'ai',
+            content: response.ai_response,
+            timestamp: new Date(),
+            ethics_score: response.ethics_score,
+            tool_result: response.tool_result,
+            intervention: response.intervention
+          };
 
-        setMessages(prev => [...prev, aiMessage]);
+          setMessages(prev => [...prev, aiMessage]);
 
-        // Track ethics alerts
-        if (response.intervention?.needed) {
-          setEthicsAlerts(prev => prev + 1);
+          // Track ethics alerts
+          if (response.intervention?.needed) {
+            setEthicsAlerts(prev => prev + 1);
+          }
         }
       }
     } catch (error) {
@@ -163,6 +176,92 @@ const TaskChat: React.FC<TaskChatProps> = ({
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setSelectedTool(''); // Reset tool selection
+      setUploadedFile(null); // Reset file upload
+    }
+  };
+
+  const getToolDisplayName = (toolName: string): string => {
+    const tool = availableTools.find(t => t.name === toolName);
+    return tool?.title || toolName;
+  };
+
+  const handleToolExecution = async (toolName: string, userInput: string) => {
+    try {
+      let toolParams: any = {};
+      
+      // Handle file upload first if needed
+      if (uploadedFile && (toolName === 'pdf_summary' || toolName === 'ai_detection')) {
+        const uploadResponse = await apiService.uploadFile(uploadedFile);
+        if (!uploadResponse.success) {
+          throw new Error('Failed to upload file');
+        }
+        toolParams.file_path = uploadResponse.file_path;
+        toolParams.filename = uploadResponse.filename;
+      }
+      
+      // Prepare tool parameters based on tool type
+      switch (toolName) {
+        case 'pdf_summary':
+          if (uploadedFile) {
+            toolParams.max_chunks = 5;
+          } else {
+            toolParams = { text: userInput };
+          }
+          break;
+        case 'grammar_check':
+          if (uploadedFile) {
+            // For uploaded files, we'll extract text content
+            toolParams.text = `File: ${uploadedFile.name}`;
+          } else {
+            toolParams.text = userInput;
+          }
+          break;
+        case 'ai_detection':
+          if (uploadedFile) {
+            toolParams.text = `File: ${uploadedFile.name}`;
+          } else {
+            toolParams.text = userInput;
+          }
+          break;
+        case 'web_search':
+          toolParams = { query: userInput };
+          break;
+        case 'wikipedia_search':
+          toolParams = { query: userInput };
+          break;
+        case 'solve_equation':
+        case 'calculate':
+          toolParams = { expression: userInput };
+          break;
+        default:
+          toolParams = { query: userInput, text: userInput };
+      }
+
+      const response = await apiService.useTaskTool({
+        task_id: taskId,
+        tool_name: toolName,
+        tool_params: toolParams
+      });
+
+      const toolMessage: ChatMessage = {
+        id: `tool_${Date.now()}`,
+        type: 'tool',
+        content: `🔧 **${getToolDisplayName(toolName)}**: ${response.summary || response.result || 'Tool executed successfully'}`,
+        timestamp: new Date(),
+        tool_result: response
+      };
+
+      setMessages(prev => [...prev, toolMessage]);
+    } catch (error) {
+      console.error(`Failed to use tool ${toolName}:`, error);
+      const errorMessage: ChatMessage = {
+        id: `tool_error_${Date.now()}`,
+        type: 'system',
+        content: `❌ Failed to use ${getToolDisplayName(toolName)}. Please try again.`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
@@ -525,12 +624,67 @@ const TaskChat: React.FC<TaskChatProps> = ({
 
       {/* Input */}
       <div className="bg-white border-t border-gray-200 p-4">
+        {/* Tool Selection and File Upload Row */}
+        <div className="flex space-x-4 mb-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              Select Tool (Optional)
+            </label>
+            <select
+              value={selectedTool}
+              onChange={(e) => setSelectedTool(e.target.value)}
+              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">💬 General Chat (AI Assistant)</option>
+              {availableTools.map((tool) => (
+                <option key={tool.name} value={tool.name}>
+                  {getToolIcon(tool.name) && '🔧'} {tool.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {(selectedTool === 'pdf_summary' || selectedTool === 'ai_detection') && (
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Upload File (Optional)
+              </label>
+              <input
+                type="file"
+                accept={selectedTool === 'pdf_summary' ? '.pdf' : '.txt,.doc,.docx,.pdf'}
+                onChange={(e) => setUploadedFile(e.target.files?.[0] || null)}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Selected Tool Info */}
+        {selectedTool && (
+          <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              {React.createElement(getToolIcon(selectedTool), { className: "h-4 w-4 text-blue-600" })}
+              <span className="text-sm font-medium text-blue-900">
+                Using: {getToolDisplayName(selectedTool)}
+              </span>
+            </div>
+            <p className="text-xs text-blue-700 mt-1">
+              {availableTools.find(t => t.name === selectedTool)?.description}
+            </p>
+          </div>
+        )}
+
+        {/* Message Input Row */}
         <div className="flex space-x-4">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask for help, request research, or use tools to work on your task..."
+            placeholder={
+              selectedTool 
+                ? `Enter your ${selectedTool === 'web_search' ? 'search query' : selectedTool === 'grammar_check' ? 'text to check' : 'input'} for ${getToolDisplayName(selectedTool)}...`
+                : "Ask for help, request research, or use tools to work on your task..."
+            }
             className="flex-1 resize-none border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={2}
             disabled={isLoading}
@@ -541,9 +695,16 @@ const TaskChat: React.FC<TaskChatProps> = ({
             className="btn-primary flex items-center space-x-2 px-6"
           >
             <Send className="h-4 w-4" />
-            <span>Send</span>
+            <span>{selectedTool ? 'Use Tool' : 'Send'}</span>
           </button>
         </div>
+
+        {/* File Upload Status */}
+        {uploadedFile && (
+          <div className="mt-2 text-xs text-green-600">
+            📎 File selected: {uploadedFile.name}
+          </div>
+        )}
       </div>
 
       {/* Deliverable Modal */}

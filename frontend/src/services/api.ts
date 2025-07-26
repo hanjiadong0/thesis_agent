@@ -198,6 +198,15 @@ export interface ThesisProjectResponse {
   project: ThesisProjectDetails | null;
 }
 
+// File upload interface
+export interface FileUploadResponse {
+  success: boolean;
+  file_path?: string;
+  filename?: string;
+  size?: number;
+  error?: string;
+}
+
 // Create axios instance
 const api = axios.create({
   baseURL: 'http://localhost:8000',
@@ -292,7 +301,7 @@ export const apiService = {
   // Notion integration functions
   async createNotionWorkspace(workspaceData: {
     user_name: string;
-    thesis_topic: string; 
+    thesis_topic: string;
     thesis_description: string;
     project_id?: number;
   }): Promise<NotionWorkspaceResponse> {
@@ -312,6 +321,19 @@ export const apiService = {
 
   async testNotionConnection(): Promise<{success: boolean; message: string; timestamp: string}> {
     const response = await api.post('/api/test-notion-connection');
+    return response.data;
+  },
+
+  // File upload for tools
+  uploadFile: async (file: File): Promise<FileUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post('/upload-file', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

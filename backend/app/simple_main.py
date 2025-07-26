@@ -12,7 +12,7 @@ import os
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
@@ -33,6 +33,9 @@ from backend.app.services.thesis_service import thesis_service
 from backend.app.services.task_work_service import TaskWorkService
 from backend.app.models.database import get_db
 from sqlalchemy.orm import Session
+
+import tempfile
+import os
 
 
 # Pydantic models for brainstorming
@@ -693,6 +696,27 @@ async def get_task_status(task_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get task status: {str(e)}")
+
+
+@app.post("/api/upload-file")
+async def upload_file(file: UploadFile = File(...)):
+    """Upload a file for processing by tools like PDF summarizer."""
+    try:
+        # Create temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        return {
+            "success": True,
+            "file_path": temp_file_path,
+            "filename": file.filename,
+            "size": len(content)
+        }
+    except Exception as e:
+        # logger.error(f"Error uploading file: {e}") # logger is not defined, so commenting out
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
 
 if __name__ == "__main__":
