@@ -95,37 +95,63 @@ class WebSearchService:
                     "error": "No claim provided for fact-checking"
                 }
             
-            # Search for information about the claim
-            search_results = self.search_web(claim, result_count=10, search_type="facts")
-            
-            if not search_results["success"]:
-                return search_results
-            
+            # Initialize results structure
             results = {
                 "success": True,
                 "claim": claim,
                 "evidence": [],
-                "assessment": "Unknown",
-                "confidence": "Low",
-                "sources": search_results["sources"]
+                "assessment": "Requires verification",
+                "confidence": "Medium",
+                "sources": [],
+                "summary": ""
             }
             
-            # Analyze search results for evidence
-            if search_results["results"]:
-                results["evidence"] = self._analyze_evidence(claim, search_results["results"])
+            # Try multiple search approaches
+            search_successful = False
             
-            # Get AI assessment if available
+            # 1. Try DuckDuckGo search
+            search_results = self.search_web(claim, result_count=5, search_type="facts")
+            if search_results["success"] and search_results.get("results"):
+                results["evidence"] = self._analyze_evidence(claim, search_results["results"])
+                results["sources"] = search_results["sources"]
+                search_successful = True
+            
+            # 2. Try Wikipedia search as fallback
+            if not search_successful:
+                wiki_results = self._search_wikipedia_for_claim(claim)
+                if wiki_results:
+                    results["evidence"] = wiki_results
+                    search_successful = True
+            
+            # 3. If no external results, use AI-based analysis
             if self.ai_service:
-                ai_assessment = self._get_ai_fact_check(claim, results["evidence"])
+                ai_assessment = self._get_ai_fact_check_with_fallback(claim, results["evidence"])
                 results.update(ai_assessment)
+            else:
+                # Provide basic assessment without AI
+                results["assessment"] = "Unable to verify - requires manual fact-checking"
+                results["confidence"] = "Low"
+                results["summary"] = f"Could not find reliable sources to verify the claim: '{claim}'. Please consult authoritative sources manually."
+            
+            # Ensure we always have a meaningful response
+            if not results["summary"]:
+                if results["evidence"]:
+                    results["summary"] = f"Found {len(results['evidence'])} relevant sources. Assessment: {results['assessment']} (Confidence: {results['confidence']})"
+                else:
+                    results["summary"] = f"Limited information available for fact-checking. Claim requires verification from authoritative sources."
             
             return results
             
         except Exception as e:
             logger.error(f"Error in fact-checking: {e}")
             return {
-                "success": False,
-                "error": f"Fact-check failed: {str(e)}"
+                "success": True,  # Don't fail completely
+                "claim": claim,
+                "assessment": "Error occurred during fact-checking",
+                "confidence": "Low",
+                "evidence": [],
+                "sources": [],
+                "summary": f"Unable to complete fact-check due to technical issues. Please verify manually: '{claim}'"
             }
     
     def verify_source(self, url: str) -> Dict[str, Any]:
@@ -387,6 +413,153 @@ Explanation: [explanation]"""
             "warnings": warnings,
             "recommendations": recommendations
         }
+
+    def _search_wikipedia_for_claim(self, claim: str) -> List[Dict[str, str]]:
+        """Search Wikipedia for information related to a claim."""
+        try:
+            # Extract key terms from the claim for Wikipedia search
+            key_terms = self._extract_key_terms(claim)
+            evidence = []
+            
+            for term in key_terms[:2]:  # Limit to 2 terms to avoid too many requests
+                try:
+                    # Search Wikipedia
+                    search_url = f"https://en.wikipedia.org/w/api.php"
+                    search_params = {
+                        'action': 'query',
+                        'list': 'search',
+                        'srsearch': term,
+                        'format': 'json',
+                        'srlimit': 2
+                    }
+                    
+                    response = requests.get(search_url, params=search_params, headers=self.headers, timeout=10)
+                    response.raise_for_status()
+                    search_data = response.json()
+                    
+                    # Get page summaries
+                    for page in search_data.get('query', {}).get('search', []):
+                        title = page.get('title', '')
+                        page_url = f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}"
+                        
+                        # Get page summary
+                        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title.replace(' ', '_')}"
+                        summary_response = requests.get(summary_url, headers=self.headers, timeout=10)
+                        
+                        if summary_response.status_code == 200:
+                            summary_data = summary_response.json()
+                            extract = summary_data.get('extract', '')
+                            
+                            if extract and len(extract) > 50:
+                                evidence.append({
+                                    "source": f"Wikipedia - {title}",
+                                    "text": extract[:300] + "..." if len(extract) > 300 else extract,
+                                    "url": page_url,
+                                    "relevance": "Medium"
+                                })
+                        
+                except Exception as e:
+                    logger.warning(f"Error searching Wikipedia for term '{term}': {e}")
+                    continue
+            
+            return evidence[:3]  # Limit to 3 pieces of evidence
+            
+        except Exception as e:
+            logger.error(f"Error in Wikipedia search: {e}")
+            return []
+
+    def _extract_key_terms(self, claim: str) -> List[str]:
+        """Extract key terms from a claim for searching."""
+        # Remove common words and extract meaningful terms
+        common_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'that', 'this', 'it', 'they', 'them', 'their'}
+        
+        # Clean and split the claim
+        words = re.findall(r'\b[A-Za-z]+\b', claim.lower())
+        key_terms = [word for word in words if word not in common_words and len(word) > 2]
+        
+        # Return top terms (prefer longer/more specific terms)
+        key_terms.sort(key=len, reverse=True)
+        return key_terms[:5]
+
+    def _get_ai_fact_check_with_fallback(self, claim: str, evidence: List[Dict[str, str]]) -> Dict[str, Any]:
+        """Get AI-powered fact-check assessment with fallback logic."""
+        if not self.ai_service or not hasattr(self.ai_service, 'provider'):
+            return {
+                "assessment": "AI analysis not available",
+                "confidence": "Low",
+                "summary": f"Cannot verify claim automatically. Manual fact-checking recommended for: '{claim}'"
+            }
+        
+        try:
+            if evidence:
+                evidence_text = "\n".join([f"- {ev['text'][:200]}..." for ev in evidence[:3]])
+                prompt = f"""Fact-check this claim based on the provided evidence:
+
+Claim: "{claim}"
+
+Evidence found:
+{evidence_text}
+
+Provide a clear fact-check assessment:
+1. Assessment (True/False/Partially True/Inconclusive/Requires Further Investigation)
+2. Confidence level (High/Medium/Low)
+3. Brief explanation (2-3 sentences)
+
+Format your response as:
+Assessment: [assessment]
+Confidence: [confidence]
+Explanation: [explanation]"""
+            else:
+                prompt = f"""Analyze this claim for fact-checking:
+
+Claim: "{claim}"
+
+No external evidence was found. Based on your knowledge, provide:
+1. Assessment (True/False/Partially True/Inconclusive/Requires Further Investigation)
+2. Confidence level (High/Medium/Low)  
+3. Brief explanation noting the lack of current sources
+
+Format your response as:
+Assessment: [assessment]
+Confidence: [confidence]
+Explanation: [explanation]"""
+
+            response = self.ai_service.provider.generate_content(prompt)
+            
+            # Parse AI response with better error handling
+            assessment = "Requires verification"
+            confidence = "Low"
+            explanation = "Analysis could not be completed"
+            
+            if response:
+                lines = response.split('\n')
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('Assessment:'):
+                        assessment = line.split(':', 1)[1].strip()
+                    elif line.startswith('Confidence:'):
+                        confidence = line.split(':', 1)[1].strip()
+                    elif line.startswith('Explanation:'):
+                        explanation = line.split(':', 1)[1].strip()
+                
+                # If parsing failed, use the whole response as explanation
+                if assessment == "Requires verification" and response:
+                    explanation = response.strip()
+                    assessment = "Analysis provided"
+            
+            return {
+                "assessment": assessment,
+                "confidence": confidence,
+                "summary": explanation
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in AI fact-check: {e}")
+            return {
+                "assessment": "Technical error occurred",
+                "confidence": "Low",
+                "summary": f"Could not complete AI analysis. Please manually verify: '{claim}'"
+            }
 
 # Global instance
 _web_search_service = None

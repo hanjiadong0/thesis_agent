@@ -433,8 +433,16 @@ const TaskChat: React.FC<TaskChatProps> = ({
         return (
           <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
             <h4 className="font-semibold text-orange-900">🔍 Fact Check Result:</h4>
-            <p className="text-sm">Assessment: <span className="font-medium">{result.fact_check?.assessment}</span></p>
-            <p className="text-xs">Confidence: {result.fact_check?.confidence}</p>
+            <p className="text-sm">Assessment: <span className="font-medium">{result.assessment || result.fact_check?.assessment || 'Unknown'}</span></p>
+            <p className="text-xs text-orange-700">Confidence: {result.confidence || result.fact_check?.confidence || 'Low'}</p>
+            {(result.summary || result.fact_check?.summary) && (
+              <p className="text-sm mt-2 text-orange-800">{result.summary || result.fact_check?.summary}</p>
+            )}
+            {result.evidence && result.evidence.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-medium text-orange-700">Sources found: {result.evidence.length}</p>
+              </div>
+            )}
           </div>
         );
 
