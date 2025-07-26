@@ -95,7 +95,7 @@ export default function QuestionnaireForm({ onSubmit, loading = false, onBack }:
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
@@ -129,7 +129,7 @@ export default function QuestionnaireForm({ onSubmit, loading = false, onBack }:
 
       {/* Form */}
       <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-        <div className="card">
+        <div className="card-clean">
           {/* Step 1: Personal Information */}
           {currentStep === 0 && (
             <div className="animate-fadeInUp">
@@ -263,7 +263,7 @@ export default function QuestionnaireForm({ onSubmit, loading = false, onBack }:
                   </div>
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-secondary-700 mb-2">
                     Thesis Description *
                     {brainstormedData.thesis_description && (
@@ -273,9 +273,9 @@ export default function QuestionnaireForm({ onSubmit, loading = false, onBack }:
                     )}
                   </label>
                   <textarea
-                    rows={4}
+                    rows={6}
                     {...register('thesis_description', { required: 'Description is required' })}
-                    className={`form-textarea ${brainstormedData.thesis_description ? 'border-success-300 bg-success-50' : ''}`}
+                    className={`form-textarea w-full ${brainstormedData.thesis_description ? 'border-success-300 bg-success-50' : ''}`}
                     placeholder="Provide a detailed description of your thesis project, including objectives, methodology, and expected outcomes..."
                   />
                   {errors.thesis_description && <p className="text-danger-600 text-sm mt-1">{errors.thesis_description.message}</p>}

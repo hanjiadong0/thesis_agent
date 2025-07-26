@@ -1,0 +1,228 @@
+/Users/axessintelligence/Projects/Personal/thesis_agent/venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+INFO:     Will watch for changes in these directories: ['/Users/axessintelligence/Projects/Personal/thesis_agent/backend/app']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [33123] using StatReload
+🎓 Starting Thesis Helper Simple Server...
+📊 Visit: http://localhost:8000
+📚 API Docs: http://localhost:8000/docs
+🔧 Debug Mode: True
+/Users/axessintelligence/Projects/Personal/thesis_agent/venv/lib/python3.13/site-packages/pydantic/_internal/_config.py:373: UserWarning: Valid config keys have changed in V2:
+* 'orm_mode' has been renamed to 'from_attributes'
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [33130]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+🚀 Starting simplified Thesis Helper...
+🚀 Initializing services...
+✅ AI service initialized successfully
+✅ Email service initialized successfully
+✅ Notion service initialized successfully
+✅ Task Work service initialized successfully
+🔍 Service status: AI=True, Email=True, Notion=True, TaskWork=True
+✅ All services initialized successfully
+INFO:     127.0.0.1:56684 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56737 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56737 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56772 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56837 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56975 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "OPTIONS /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56989 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56996 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57066 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57081 - "OPTIONS /api/finalize-topic HTTP/1.1" 200 OK
+🔍 Topic extraction raw response: {"thesis_topic": "Automating Unit Testing with Large Language Models: A Study on Teaching LLMs to Understand Programming Language Requirements", "thesis_description": "This research aims to investigat...
+🔍 Topic extraction raw response: {"thesis_topic": "Automating Unit Testing with Large Language Models: A Study on Teaching LLMs to Understand Programming Language Requirements", "thesis_description": "This research aims to investigate the potential of Large Language Models (LLMs) in automating unit testing for programming languages...
+🔧 After cleaning: {"thesis_topic": "Automating Unit Testing with Large Language Models: A Study on Teaching LLMs to Understand Programming Language Requirements", "thesis_description": "This research aims to investigate the potential of Large Language Models (LLMs) in automating unit testing for programming languages...
+🔍 Extracted JSON: {"thesis_topic": "Automating Unit Testing with Large Language Models: A Study on Teaching LLMs to Understand Programming Language Requirements", "thesis_description": "This research aims to investigate the potential of Large Language Models (LLMs) in automating unit testing for programming languages. The specific objective is to develop a formal specification and knowledge graph that enables LLMs to understand the requirements and conventions of a given programming language or framework. The pro...
+✅ Successfully parsed topic: Automating Unit Testing with Large Language Models: A Study on Teaching LLMs to Understand Programmi...
+INFO:     127.0.0.1:57081 - "POST /api/finalize-topic HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57081 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57083 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57133 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+🔍 Topic extraction raw response: {"thesis_topic": "Automating Unit Testing for Large Language Models: A Novel Approach to Enhance Model Robustness and Reliability", "thesis_description": "This thesis aims to develop a novel automated...
+🔍 Topic extraction raw response: {"thesis_topic": "Automating Unit Testing for Large Language Models: A Novel Approach to Enhance Model Robustness and Reliability", "thesis_description": "This thesis aims to develop a novel automated unit testing framework for large language models (LLMs), focusing on improving model robustness and...
+🔧 After cleaning: {"thesis_topic": "Automating Unit Testing for Large Language Models: A Novel Approach to Enhance Model Robustness and Reliability", "thesis_description": "This thesis aims to develop a novel automated unit testing framework for large language models (LLMs), focusing on improving model robustness and...
+🔍 Extracted JSON: {"thesis_topic": "Automating Unit Testing for Large Language Models: A Novel Approach to Enhance Model Robustness and Reliability", "thesis_description": "This thesis aims to develop a novel automated unit testing framework for large language models (LLMs), focusing on improving model robustness and reliability. The proposed methodology involves designing and implementing a custom unit testing library that leverages machine learning techniques to identify and mitigate potential errors in LLMs. K...
+✅ Successfully parsed topic: Automating Unit Testing for Large Language Models: A Novel Approach to Enhance Model Robustness and ...
+INFO:     127.0.0.1:57161 - "POST /api/finalize-topic HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57761 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57761 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57768 - "OPTIONS /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57768 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57770 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57834 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57847 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57867 - "OPTIONS /api/finalize-topic HTTP/1.1" 200 OK
+🔍 Topic extraction raw response: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines in Software Development", "thesis_description": "This study aims to investigate ...
+🔍 Topic extraction raw response: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines in Software Development", "thesis_description": "This study aims to investigate the integration of unit testing with popular CI/CD tools such as Jenkins and GitLab CI/CD, focusing ...
+🔧 After cleaning: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines in Software Development", "thesis_description": "This study aims to investigate the integration of unit testing with popular CI/CD tools such as Jenkins and GitLab CI/CD, focusing ...
+🔍 Extracted JSON: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines in Software Development", "thesis_description": "This study aims to investigate the integration of unit testing with popular CI/CD tools such as Jenkins and GitLab CI/CD, focusing on automation workflows and streamline the development process. The research will explore how different programming languages and frameworks implement unit tests, and develop a framework for implement...
+✅ Successfully parsed topic: Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipeline...
+INFO:     127.0.0.1:57867 - "POST /api/finalize-topic HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57869 - "OPTIONS /api/generate-timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57869 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57869 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57947 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57951 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57902 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57902 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57973 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57979 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:57982 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+🔍 Raw AI Response (first 500 chars): Here is a detailed thesis timeline with granular daily tasks:
+
+```
+{
+  "phases": [
+    {
+      "name": "Phase 1: Literature Review",
+      "description": "Conduct thorough literature review on topic X",
+      "start_date": "2025-07-26",
+      "end_date": "2025-08-02",
+      "estimated_hours": 80,
+      "tasks": [
+        {
+          "title": "Read 10 papers on topic X" (4h),
+          "description": "Read and analyze 10 papers to understand current state of research",
+          "estimated_hours"
+🔍 Extracted JSON (first 300 chars): {
+  "phases": [
+    {
+      "name": "Phase "1": Literature Review",
+      "description": "Conduct thorough literature review on topic X",
+      "start_date": "2025-07-26",
+      "end_date": "2025-08-02",
+      "estimated_hours": "80",
+      "tasks": [
+        {
+          "title": "Read 10 papers on 
+❌ JSON Parse Error: Expecting ',' delimiter: line 4 column 23 (char 44)
+🔍 Problematic text: {
+  "phases": [
+    {
+      "name": "Phase "1": Literature Review",
+      "description": "Conduct thorough literature review on topic X",
+      "start_date": "2025-07-26",
+      "end_date": "2025-08-0...
+🔄 Creating fallback timeline
+INFO:     127.0.0.1:57986 - "POST /api/generate-timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58012 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58017 - "POST /api/generate-timeline HTTP/1.1" 422 Unprocessable Content
+INFO:     127.0.0.1:58027 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58027 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58027 - "GET /api/thesis-projects/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58027 - "OPTIONS /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58050 - "OPTIONS /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58027 - "POST /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "POST /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "GET /api/thesis-projects/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58052 - "POST /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58027 - "POST /api/task/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58072 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58076 - "OPTIONS /api/task/tool HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58076 - "POST /api/task/tool HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58081 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58078 - "POST /api/task/tool HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58113 - "GET /api/thesis-projects HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58138 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58152 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58171 - "POST /api/brainstorm-chat HTTP/1.1" 200 OK
+🔍 Topic extraction raw response: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines for Improved Software Reliability and Efficiency", "thesis_description": "This r...
+🔍 Topic extraction raw response: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines for Improved Software Reliability and Efficiency", "thesis_description": "This research aims to investigate the effective integration of unit testing with CI/CD pipelines, focusing...
+🔧 After cleaning: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines for Improved Software Reliability and Efficiency", "thesis_description": "This research aims to investigate the effective integration of unit testing with CI/CD pipelines, focusing...
+🔍 Extracted JSON: {"thesis_topic": "Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipelines for Improved Software Reliability and Efficiency", "thesis_description": "This research aims to investigate the effective integration of unit testing with CI/CD pipelines, focusing on the automation of unit tests. The objectives include developing a standardized approach for integrating testing frameworks into the pipeline, exploring test-driven development (TDD) and behavior-d...
+✅ Successfully parsed topic: Exploring the Integration of Unit Testing with Continuous Integration/Continuous Deployment Pipeline...
+INFO:     127.0.0.1:58171 - "POST /api/finalize-topic HTTP/1.1" 200 OK
+🔍 Raw AI Response (first 500 chars): Here is a detailed thesis timeline with granular daily tasks in JSON format:
+
+```
+{
+  "phases": [
+    {
+      "name": "Phase 1: Literature Review",
+      "description": "Conduct thorough literature review to identify existing research on unit testing and CI/CD pipelines.",
+      "start_date": "2025-07-27",
+      "end_date": "2025-08-03",
+      "estimated_hours": 80,
+      "tasks": [
+        {
+          "title": "Read 20 papers on topic Unit Testing",
+          "description": "Focus on identifyin
+🔍 Extracted JSON (first 300 chars): {
+  "phases": [
+    {
+      "name": "Phase "1": Literature Review",
+      "description": "Conduct thorough literature review to identify existing research on unit testing and CI/CD pipelines.",
+      "start_date": "2025-07-27",
+      "end_date": "2025-08-03",
+      "estimated_hours": "80",
+      "ta
+❌ JSON Parse Error: Expecting ',' delimiter: line 4 column 23 (char 44)
+🔍 Problematic text: {
+  "phases": [
+    {
+      "name": "Phase "1": Literature Review",
+      "description": "Conduct thorough literature review to identify existing research on unit testing and CI/CD pipelines.",
+      ...
+🔄 Creating fallback timeline
+INFO:     127.0.0.1:58201 - "POST /api/generate-timeline HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58201 - "OPTIONS /api/task/chat HTTP/1.1" 200 OK
+Could not parse ethical assessment: Expecting value: line 5 column 26 (char 244)
+INFO:     127.0.0.1:58201 - "POST /api/task/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58283 - "POST /api/task/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58296 - "OPTIONS /api/create-notion-workspace HTTP/1.1" 200 OK
+🎓 Creating student workspace for Mouaz Anan
+📄 Creating main thesis page...
+✅ Main page created: https://www.notion.so/Exploring-the-Integration-of-Unit-Testing-with-Continuous-Integration-Continuous-Deployment-Pipeline-23c3e79978a281a099ced802d459416e
+📋 Creating task database...
+✅ Task database created: https://www.notion.so/23c3e79978a28127aef3c318ce5e4cf5
+🎯 Creating milestone database...
+✅ Milestone database created: https://www.notion.so/23c3e79978a281128cb1e49f88aef6ff
+📊 Creating progress page...
+✅ Progress page created: https://www.notion.so/Progress-Dashboard-23c3e79978a28164a884ff5696edb78f
+✅ Student workspace created successfully!
+INFO:     127.0.0.1:58283 - "POST /api/create-notion-workspace HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58283 - "OPTIONS /api/sync-timeline-to-notion HTTP/1.1" 200 OK
+📅 Syncing timeline with chronological ordering...
+📊 Syncing 2 phases and 2 milestones
+🎯 Syncing 2 milestones in order...
+✅ Milestone 1: Literature Review Complete
+✅ Milestone 2: Methodology Finalized
+📋 Syncing tasks in chronological order...
+✅ Task 1: Search and collect relevant papers (Due: 2025-08-02)
+✅ Task 2: Read and summarize key papers (Due: 2025-08-09)
+✅ Task 3: Identify research gaps (Due: 2025-08-16)
+✅ Task 4: Write literature review chapter (Due: 2025-08-25)
+✅ Task 5: Define research questions (Due: 2025-08-30)
+✅ Task 6: Design research methodology (Due: 2025-09-06)
+✅ Task 7: Set up tools and environment (Due: 2025-09-13)
+✅ Task 8: Write methodology chapter (Due: 2025-09-24)
+📊 Updating progress page with real data...
+✅ Progress page updated with real data
+📅 Updating main page with today's tasks...
+✅ Main page updated with 0 today's tasks
+✅ Timeline sync completed: {'milestones_synced': 2, 'tasks_synced': 8, 'today_tasks_count': 0, 'status': 'success', 'synced_at': '2025-07-26T17:47:46.743781'}
+INFO:     127.0.0.1:58296 - "POST /api/sync-timeline-to-notion HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58321 - "POST /api/task/chat HTTP/1.1" 200 OK

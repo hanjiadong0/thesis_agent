@@ -146,7 +146,7 @@ export default function BrainstormingChat({ onTopicFinalized, onBack }: Brainsto
   if (!isReady) {
     return (
       <div className="max-w-4xl mx-auto">
-        <div className="card">
+        <div className="card-clean">
           <div className="card-header text-center">
             <div className="flex items-center justify-center mb-4">
               <Lightbulb className="h-8 w-8 text-primary-600 mr-3" />
@@ -232,7 +232,7 @@ export default function BrainstormingChat({ onTopicFinalized, onBack }: Brainsto
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="card">
+      <div className="card-clean">
         {/* Header */}
         <div className="card-header">
           <div className="flex items-center justify-between">

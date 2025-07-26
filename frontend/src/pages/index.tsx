@@ -264,25 +264,30 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl animate-float"></div>
-        <div className="absolute top-1/2 right-20 w-48 h-48 bg-blue-400/10 rounded-full blur-2xl animate-float" style={{animationDelay: '1s'}}></div>
-        <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-purple-400/10 rounded-full blur-xl animate-float" style={{animationDelay: '2s'}}></div>
-        <div className="absolute top-1/4 left-1/2 w-16 h-16 bg-emerald-400/10 rounded-full blur-lg animate-float" style={{animationDelay: '0.5s'}}></div>
-      </div>
+      {/* Animated Background Elements - Only for selector and timeline views */}
+      {currentView === 'selector' || currentView === 'timeline' ? (
+        <>
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl animate-float"></div>
+            <div className="absolute top-1/2 right-20 w-48 h-48 bg-blue-400/10 rounded-full blur-2xl animate-float" style={{animationDelay: '1s'}}></div>
+            <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-purple-400/10 rounded-full blur-xl animate-float" style={{animationDelay: '2s'}}></div>
+            <div className="absolute top-1/4 left-1/2 w-16 h-16 bg-emerald-400/10 rounded-full blur-lg animate-float" style={{animationDelay: '0.5s'}}></div>
+          </div>
+          <div className="absolute inset-0 opacity-5 pointer-events-none">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundSize: '30px 30px'
+            }}></div>
+          </div>
+        </>
+      ) : (
+        /* Clean background for brainstorming and questionnaire */
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50"></div>
+      )}
 
       {/* Main Content */}
       <div className="relative z-10">
         {renderCurrentView()}
-      </div>
-
-      {/* Educational Pattern Overlay */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: '30px 30px'
-        }}></div>
       </div>
     </div>
   );
