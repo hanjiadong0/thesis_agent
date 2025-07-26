@@ -1,25 +1,34 @@
-import { useState } from 'react';
-import BrainstormingChat from '../components/BrainstormingChat';
+import React, { useState, useEffect } from 'react';
+import ThesisSelector from '../components/ThesisSelector';
 import QuestionnaireForm from '../components/QuestionnaireForm';
 import TimelineDisplay from '../components/TimelineDisplay';
-import ThesisSelector from '../components/ThesisSelector';
+import BrainstormingChat from '../components/BrainstormingChat';
 import { 
-  apiService, 
-  type UserQuestionnaireData, 
-  type TimelineResponse,
-  type ThesisProject,
-  getThesisProject
+  UserQuestionnaireData, 
+  TimelineData, 
+  TimelineResponse, 
+  ThesisProject,
+  apiService,
+  getThesisProject 
 } from '../services/api';
 
-type CurrentView = 'selector' | 'brainstorming' | 'questionnaire' | 'timeline';
+type ViewType = 'selector' | 'brainstorming' | 'questionnaire' | 'timeline';
+
+interface NotionWorkspaceInfo {
+  workspace_url: string;
+  task_db_id: string;
+  milestone_db_id: string;
+  main_page_id: string;
+  progress_page_id?: string;
+}
 
 export default function Home() {
-  const [currentView, setCurrentView] = useState<CurrentView>('selector');
+  const [currentView, setCurrentView] = useState<ViewType>('selector');
   const [timelineData, setTimelineData] = useState<TimelineResponse | null>(null);
   const [userQuestionnaireData, setUserQuestionnaireData] = useState<UserQuestionnaireData | null>(null);
-  const [loading, setLoading] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [existingNotionWorkspace, setExistingNotionWorkspace] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleContinueThesis = async (project: ThesisProject) => {
     try {
@@ -48,7 +57,7 @@ export default function Home() {
               id: projectData.notion_milestone_db_id
             },
             progress_page: {
-              id: projectData.notion_progress_page_id || projectData.notion_main_page_id // Use actual progress page ID or fallback to main page
+              id: projectData.notion_progress_page_id || projectData.notion_main_page_id
             }
           };
           setExistingNotionWorkspace(workspaceData);
@@ -94,11 +103,11 @@ export default function Home() {
           procrastination_level: projectData.procrastination_level as any,
           writing_style: projectData.writing_style as any,
           ai_provider: projectData.ai_provider as any,
-          email_notifications: true, // Default value
-          preferred_start_time: "09:00", // Default value
-          preferred_end_time: "17:00", // Default value
-          daily_email_time: "08:00", // Default value
-          timezone: "UTC" // Default value
+          email_notifications: true,
+          preferred_start_time: "09:00",
+          preferred_end_time: "17:00",
+          daily_email_time: "08:00",
+          timezone: "UTC"
         };
         
         setTimelineData(timelineData);
@@ -116,20 +125,11 @@ export default function Home() {
   };
 
   const handleStartNew = () => {
-    // Clear any existing data
+    setCurrentView('brainstorming');
     setTimelineData(null);
     setUserQuestionnaireData(null);
     setCurrentProjectId(null);
     setExistingNotionWorkspace(null);
-    
-    // Clear any brainstorming data
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.removeItem('brainstormed_topic');
-      window.sessionStorage.removeItem('brainstormed_description');
-      window.sessionStorage.removeItem('brainstormed_field');
-    }
-    
-    setCurrentView('brainstorming');
   };
 
   const handleTopicFinalized = (topic: string, description: string) => {
@@ -143,7 +143,6 @@ export default function Home() {
   const handleQuestionnaireSubmit = async (data: UserQuestionnaireData) => {
     setLoading(true);
     try {
-      // Get brainstormed data if available
       const brainstormedTopic = typeof window !== 'undefined' ? window.sessionStorage.getItem('brainstormed_topic') : null;
       const brainstormedDescription = typeof window !== 'undefined' ? window.sessionStorage.getItem('brainstormed_description') : null;
       
@@ -158,15 +157,12 @@ export default function Home() {
       if (result.success) {
         setTimelineData(result);
         setUserQuestionnaireData(finalData);
-        // Set project ID from response if available
         setCurrentProjectId((result as any)?.project_id || null);
         setCurrentView('timeline');
         
-        // Clear brainstorming data
         if (typeof window !== 'undefined') {
           window.sessionStorage.removeItem('brainstormed_topic');
           window.sessionStorage.removeItem('brainstormed_description');
-          window.sessionStorage.removeItem('brainstormed_field');
         }
       } else {
         alert('Failed to generate timeline');
@@ -217,40 +213,48 @@ export default function Home() {
     switch (currentView) {
       case 'selector':
         return (
-          <ThesisSelector
-            onContinueThesis={handleContinueThesis}
-            onStartNew={handleStartNew}
-            loading={loading}
-          />
+          <div className="animate-fade-in-up">
+            <ThesisSelector
+              onContinueThesis={handleContinueThesis}
+              onStartNew={handleStartNew}
+              loading={loading}
+            />
+          </div>
         );
       
       case 'brainstorming':
         return (
-          <BrainstormingChat 
-            onTopicFinalized={handleTopicFinalized}
-            onBack={handleBackToSelector}
-          />
+          <div className="animate-fade-in-up">
+            <BrainstormingChat 
+              onTopicFinalized={handleTopicFinalized}
+              onBack={handleBackToSelector}
+            />
+          </div>
         );
       
       case 'questionnaire':
         return (
-          <QuestionnaireForm 
-            onSubmit={handleQuestionnaireSubmit} 
-            loading={loading}
-            onBack={handleBackToBrainstorming}
-          />
+          <div className="animate-fade-in-up">
+            <QuestionnaireForm 
+              onSubmit={handleQuestionnaireSubmit} 
+              loading={loading}
+              onBack={handleBackToBrainstorming}
+            />
+          </div>
         );
       
       case 'timeline':
         return timelineData ? (
-          <TimelineDisplay 
-            timelineData={timelineData}
-            onEmailTest={handleEmailTestWithNotion}
-            userQuestionnaireData={userQuestionnaireData}
-            onBack={handleBackToSelector}
-            currentProjectId={currentProjectId || undefined}
-            existingNotionWorkspace={existingNotionWorkspace}
-          />
+          <div className="animate-fade-in-up">
+            <TimelineDisplay 
+              timelineData={timelineData}
+              onEmailTest={handleEmailTestWithNotion}
+              userQuestionnaireData={userQuestionnaireData}
+              onBack={handleBackToSelector}
+              currentProjectId={currentProjectId || undefined}
+              existingNotionWorkspace={existingNotionWorkspace}
+            />
+          </div>
         ) : null;
       
       default:
@@ -259,8 +263,27 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen">
-      {renderCurrentView()}
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl animate-float"></div>
+        <div className="absolute top-1/2 right-20 w-48 h-48 bg-blue-400/10 rounded-full blur-2xl animate-float" style={{animationDelay: '1s'}}></div>
+        <div className="absolute bottom-20 left-1/4 w-24 h-24 bg-purple-400/10 rounded-full blur-xl animate-float" style={{animationDelay: '2s'}}></div>
+        <div className="absolute top-1/4 left-1/2 w-16 h-16 bg-emerald-400/10 rounded-full blur-lg animate-float" style={{animationDelay: '0.5s'}}></div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10">
+        {renderCurrentView()}
+      </div>
+
+      {/* Educational Pattern Overlay */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundSize: '30px 30px'
+        }}></div>
+      </div>
     </div>
   );
 } 
