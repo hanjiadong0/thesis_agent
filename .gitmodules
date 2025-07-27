@@ -1,0 +1,3 @@
+[submodule "research_agent"]
+	path = research_agent
+	url = https://github.com/hanjiadong0/research_agent.git
