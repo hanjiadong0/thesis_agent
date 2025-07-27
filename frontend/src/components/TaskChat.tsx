@@ -153,7 +153,7 @@ const TaskChat: React.FC<TaskChatProps> = ({
             type: 'ai',
             content: response.ai_response,
             timestamp: new Date(),
-            ethics_score: response.ethics_score,
+            ethics_score: response.ethics_score ,
             tool_result: response.tool_result,
             intervention: response.intervention
           };
@@ -1046,13 +1046,13 @@ const TaskChat: React.FC<TaskChatProps> = ({
                      </span>
                     {message.ethics_score !== undefined && (
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        message.ethics_score >= 8 
+                        message.ethics_score >= 0.8 
                           ? 'bg-green-100 text-green-700' 
-                          : message.ethics_score >= 6 
+                          : message.ethics_score >= 0.6 
                           ? 'bg-yellow-100 text-yellow-700'
                           : 'bg-red-100 text-red-700'
                       }`}>
-                        Ethics: {message.ethics_score}/10
+                        Ethics: message.ethics_score}
                       </span>
                     )}
                   </div>
