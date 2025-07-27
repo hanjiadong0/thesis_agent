@@ -12,8 +12,8 @@ cd thesis_agent
 
 2. **Create virtual environment**
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+conda activate spenv (python version 3.10)
+
 ```
 
 3. **Install dependencies**
@@ -50,7 +50,7 @@ ollama serve
 1. **Start the backend server**
 ```bash
 cd backend
-source ../venv/bin/activate
+conda activate spenv
 python -m uvicorn app.simple_main:app --reload --host 0.0.0.0 --port 8000
 ```
 
