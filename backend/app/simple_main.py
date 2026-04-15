@@ -29,6 +29,7 @@ from backend.app.models.schemas import (
 from backend.app.services.ai_service import ThesisAIPlannerAgent
 from backend.app.services.email_service import EmailService
 from backend.app.integrations.notion_client import NotionThesisManager
+from backend.app.services.research_agent_service import ResearchAgentService
 from backend.app.services.thesis_service import thesis_service
 from backend.app.services.task_work_service import TaskWorkService
 from backend.app.models.database import get_db
@@ -71,10 +72,21 @@ class TaskCompletionRequest(BaseModel):
     deliverable: str
 
 
+class ResearchAgentHistoryMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ResearchAgentChatRequest(BaseModel):
+    message: str
+    history: List[ResearchAgentHistoryMessage] = []
+    ai_provider: Optional[str] = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Simple lifespan manager."""
-    global ai_service, email_service, notion_service, task_work_service
+    global ai_service, email_service, notion_service, task_work_service, research_agent_service
     
     print("🚀 Starting simplified Thesis Helper...")
     print("🚀 Initializing services...")
@@ -110,10 +122,31 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"❌ Task Work service initialization failed: {e}")
         task_work_service = None
+
+    # Initialize Research Agent service
+    try:
+        research_agent_service = ResearchAgentService()
+        if research_agent_service.get_status().get("available"):
+            print("✅ Research Agent service initialized successfully")
+        else:
+            print(f"⚠️ Research Agent unavailable: {research_agent_service.get_status().get('error')}")
+    except Exception as e:
+        print(f"❌ Research Agent service initialization failed: {e}")
+        research_agent_service = None
     
-    print(f"🔍 Service status: AI={ai_service is not None}, Email={email_service is not None}, Notion={notion_service is not None}, TaskWork={task_work_service is not None}")
-    
-    if ai_service is None and email_service is None and notion_service is None and task_work_service is None:
+    print(
+        f"🔍 Service status: AI={ai_service is not None}, Email={email_service is not None}, "
+        f"Notion={notion_service is not None}, TaskWork={task_work_service is not None}, "
+        f"ResearchAgent={research_agent_service is not None and research_agent_service.get_status().get('available', False)}"
+    )
+
+    if (
+        ai_service is None
+        and email_service is None
+        and notion_service is None
+        and task_work_service is None
+        and research_agent_service is None
+    ):
         print("⚠️ WARNING: No services initialized successfully")
     elif ai_service is None:
         print("⚠️ WARNING: AI service failed to initialize")
@@ -123,6 +156,8 @@ async def lifespan(app: FastAPI):
         print("⚠️ WARNING: Notion service failed to initialize")
     elif task_work_service is None:
         print("⚠️ WARNING: Task Work service failed to initialize")
+    elif research_agent_service is None or not research_agent_service.get_status().get("available"):
+        print("⚠️ WARNING: Research Agent service failed to initialize")
     else:
         print("✅ All services initialized successfully")
     
@@ -153,6 +188,7 @@ ai_service = None
 email_service = None
 notion_service = None
 task_work_service = None
+research_agent_service = None
 
 
 @app.get("/")
@@ -165,7 +201,8 @@ async def root():
         "endpoints": {
             "health": "/health",
             "generate_timeline": "/api/generate-timeline",
-            "test_email": "/api/test-email"
+            "test_email": "/api/test-email",
+            "research_agent_chat": "/api/research-agent/chat"
         }
     }
 
@@ -180,6 +217,7 @@ async def health_check():
             "ai_service": ai_service is not None,
             "email_service": email_service is not None,
             "notion_service": notion_service is not None,
+            "research_agent_service": research_agent_service is not None and research_agent_service.get_status().get("available", False),
             "config": settings.APP_NAME == "Thesis Helper"
         }
     }
@@ -454,6 +492,43 @@ async def finalize_topic(finalization_data: TopicFinalization):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Topic finalization failed: {str(e)}")
+
+
+@app.get("/api/research-agent/status")
+async def get_research_agent_status():
+    """Get readiness and configuration status for the integrated research agent."""
+    if not research_agent_service:
+        return {
+            "success": False,
+            "available": False,
+            "error": "Research agent service not initialized"
+        }
+
+    status = research_agent_service.get_status()
+    return {
+        "success": status.get("available", False),
+        **status
+    }
+
+
+@app.post("/api/research-agent/chat")
+async def research_agent_chat(request: ResearchAgentChatRequest):
+    """Run a chat turn through the integrated research agent."""
+    if not research_agent_service or not research_agent_service.get_status().get("available"):
+        raise HTTPException(status_code=503, detail="Research agent service not available")
+
+    try:
+        return await research_agent_service.chat(
+            message=request.message,
+            history=[item.model_dump() for item in request.history],
+            ai_provider=request.ai_provider,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Research agent chat failed: {str(e)}")
 
 
 @app.get("/api/sample-user")

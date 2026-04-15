@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     # API Keys - These will be loaded from environment variables
     NOTION_TOKEN: str = os.getenv("NOTION_TOKEN", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GOOGLE_SEARCH_API_KEY: str = os.getenv("GOOGLE_SEARCH_API_KEY", "")
+    GOOGLE_SEARCH_ENGINE_ID: str = os.getenv("GOOGLE_SEARCH_ENGINE_ID", os.getenv("GOOGLE_CSE_ID", ""))
+    GOOGLE_CSE_ID: str = os.getenv("GOOGLE_CSE_ID", "")
     
     # Google OAuth Settings
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
