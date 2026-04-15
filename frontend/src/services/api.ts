@@ -82,6 +82,8 @@ export interface HealthCheck {
   services: {
     ai_service: boolean;
     email_service: boolean;
+    notion_service?: boolean;
+    research_agent_service?: boolean;
     config: boolean;
   };
 }
@@ -118,6 +120,37 @@ export interface TopicFinalizationResponse {
   success: boolean;
   thesis_topic: string;
   thesis_description: string;
+}
+
+export interface ResearchAgentToolTrace {
+  name: string;
+  args: Record<string, any>;
+  output: string;
+}
+
+export interface ResearchAgentChatRequest {
+  message: string;
+  history: ChatMessage[];
+  ai_provider?: string;
+}
+
+export interface ResearchAgentChatResponse {
+  success: boolean;
+  reply: string;
+  tool_trace: ResearchAgentToolTrace[];
+  concept_graph_image?: string | null;
+}
+
+export interface ResearchAgentStatusResponse {
+  success: boolean;
+  available: boolean;
+  submodule_present?: boolean;
+  error?: string | null;
+  search_configured?: boolean;
+  providers?: {
+    gemini: boolean;
+    ollama: boolean;
+  };
 }
 
 export interface EmailTestResponse {
@@ -413,6 +446,17 @@ export const apiService = {
     created_at: string;
   }> {
     const response = await api.get(`/api/task/status/${taskId}`);
+    return response.data;
+  },
+
+  // Research Agent integration
+  async getResearchAgentStatus(): Promise<ResearchAgentStatusResponse> {
+    const response = await api.get('/api/research-agent/status');
+    return response.data;
+  },
+
+  async researchAgentChat(data: ResearchAgentChatRequest): Promise<ResearchAgentChatResponse> {
+    const response = await timelineApi.post('/api/research-agent/chat', data);
     return response.data;
   },
 };

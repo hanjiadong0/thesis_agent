@@ -1,6 +1,6 @@
 # Thesis Helper
 
-Thesis Helper is an AI-powered thesis planning platform built to help students move from vague ideas to a structured, trackable, and ethically supported research workflow. It combines topic brainstorming, personalized timeline generation, task execution support, Notion syncing, and daily email nudges in one system.
+Thesis Helper is an AI-powered thesis planning platform built to help students move from vague ideas to a structured, trackable, and ethically supported research workflow. It combines topic brainstorming, personalized timeline generation, task execution support, an integrated research assistant, Notion syncing, and daily email nudges in one system.
 
 The project was developed as a University of Bonn Team TK thesis-management prototype with a Next.js frontend and a FastAPI backend. It supports both local AI through Ollama and cloud AI through Google Gemini.
 
@@ -36,19 +36,23 @@ The backend turns the questionnaire into a phased plan with milestones, task est
 
 ![Timeline display](screenshots/timeline_display.png)
 
-### 4. Sync planning into Notion
+### 4. Open the integrated research assistant
+
+The app now includes a dedicated Research Assistant mode backed by the `research_agent` Git submodule. It can search arXiv, pull Wikipedia context, summarize papers, refine research queries, and generate concept graphs without leaving Thesis Helper.
+
+### 5. Sync planning into Notion
 
 Generated timelines can be pushed into a Notion workspace with task databases, milestone tracking, and progress views.
 
 ![Notion workspace](screenshots/notion_workspace.png)
 
-### 5. Stay engaged with daily progress emails
+### 6. Stay engaged with daily progress emails
 
 The system can send a daily progress summary with today's tasks, motivation, and status updates.
 
 ![Email notification](screenshots/email_notification.png)
 
-### 6. Work inside a task-focused assistant
+### 7. Work inside a task-focused assistant
 
 Each thesis task can be opened in a dedicated workspace with chat support, deliverable tracking, and specialized academic tools.
 
@@ -56,7 +60,7 @@ Each thesis task can be opened in a dedicated workspace with chat support, deliv
 
 ![Academic tools panel](screenshots/academic_tools_panel.png)
 
-### 7. Add ethical guardrails
+### 8. Add ethical guardrails
 
 The system can surface academic-integrity reminders when AI usage starts drifting toward replacement work instead of support.
 
@@ -66,6 +70,7 @@ The system can surface academic-integrity reminders when AI usage starts driftin
 
 - AI brainstorming flow for refining thesis topics
 - personalized timeline generation with phases, milestones, and task estimates
+- integrated research mode powered by the `research_agent` repository
 - local persistence so thesis projects can be resumed later
 - Notion workspace creation and timeline syncing
 - daily email summaries and motivational nudges
@@ -77,15 +82,17 @@ The system can surface academic-integrity reminders when AI usage starts driftin
 
 - Frontend: Next.js 14, React 18, TypeScript, Tailwind CSS
 - Backend: FastAPI, Pydantic, SQLAlchemy
+- Research orchestration: LangChain, LangGraph
 - Database: SQLite by default, PostgreSQL-compatible configuration
 - AI providers: Ollama, Google Gemini
-- Integrations: Notion, Gmail SMTP, Semantic Scholar and helper services
+- Integrations: Notion, Gmail SMTP, arXiv, Wikipedia, Google Custom Search, helper services
 
 ## Repository Layout
 
 ```text
 backend/             FastAPI app, models, services, integrations
 frontend/            Next.js UI, components, styles, API client
+research_agent/      Git submodule used for the integrated research assistant
 screenshots/         README/demo assets
 docs/                Project notes and status docs
 Thesis Helper - TK Team.pdf
@@ -97,8 +104,14 @@ Thesis Helper Agent.pdf
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/ananmouaz/thesis_agent.git
+git clone --recurse-submodules https://github.com/ananmouaz/thesis_agent.git
 cd thesis_agent
+```
+
+If you already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
 ```
 
 ### 2. Create and activate a virtual environment
@@ -150,6 +163,7 @@ Then update `.env` with the values you need:
 - `EMAIL_USER` and `EMAIL_PASSWORD` for Gmail delivery
 - `NOTION_TOKEN` for Notion workspace creation and syncing
 - `GEMINI_API_KEY` if you want to use Gemini instead of Ollama
+- `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID` if you want the research assistant's Google Custom Search tool
 - `DATABASE_URL` if you want a database other than local SQLite
 - `DEBUG` must be `true` or `false`
 
@@ -186,6 +200,7 @@ http://localhost:3000
 
 - `AI_PROVIDER=ollama` is the default local-first setup.
 - If Ollama is not running, cloud generation via Gemini requires a valid `GEMINI_API_KEY`.
+- The integrated Research Assistant can use arXiv and Wikipedia without Google search keys, but Google Custom Search features require `GOOGLE_SEARCH_API_KEY` and `GOOGLE_SEARCH_ENGINE_ID`.
 - Notion and Gmail features are optional, but the related buttons/actions require valid credentials.
 - The default SQLite path is resolved relative to the backend working directory, so start the API from `backend/` if you use the default config.
 
@@ -193,6 +208,8 @@ http://localhost:3000
 
 - If the backend complains about `DEBUG`, set it to `true` or `false` in `.env` instead of values like `release`.
 - If timeline generation fails with Ollama, confirm `ollama serve` is running and `llama3.2` is installed.
+- If the Research Assistant is shown as unavailable, confirm the `research_agent/` submodule was initialized and reinstall backend dependencies from `requirements.txt`.
+- If Gemini is selected for the Research Assistant, set a valid `GEMINI_API_KEY`; otherwise use Ollama.
 - If Notion actions fail, verify the integration token and that the integration has access to the target workspace.
 - If emails fail, use a Gmail app password instead of a normal account password.
 
@@ -208,6 +225,7 @@ Additional project context and presentation material live in:
 The repository already contains the core end-to-end experience:
 
 - brainstorming
+- integrated research assistant
 - questionnaire-driven planning
 - timeline generation
 - Notion sync

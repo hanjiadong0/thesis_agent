@@ -8,17 +8,24 @@ import {
   ArrowRight, 
   Trash2, 
   AlertCircle,
-  CheckCircle 
+  CheckCircle,
+  Search
 } from 'lucide-react';
 import { getThesisProjects, deactivateThesisProject, type ThesisProject } from '../services/api';
 
 interface ThesisSelectorProps {
   onContinueThesis: (project: ThesisProject) => void;
   onStartNew: () => void;
+  onOpenResearchAssistant: () => void;
   loading?: boolean;
 }
 
-export default function ThesisSelector({ onContinueThesis, onStartNew, loading = false }: ThesisSelectorProps) {
+export default function ThesisSelector({
+  onContinueThesis,
+  onStartNew,
+  onOpenResearchAssistant,
+  loading = false
+}: ThesisSelectorProps) {
   const [projects, setProjects] = useState<ThesisProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +125,7 @@ export default function ThesisSelector({ onContinueThesis, onStartNew, loading =
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
           {/* Start New Thesis */}
           <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-transparent hover:border-blue-500 transition-all duration-200">
             <div className="text-center">
@@ -140,6 +147,27 @@ export default function ThesisSelector({ onContinueThesis, onStartNew, loading =
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+
+          {/* Research Assistant */}
+          <div className="bg-white rounded-lg shadow-lg p-8 border-2 border-transparent hover:border-emerald-500 transition-all duration-200">
+            <div className="text-center">
+              <div className="bg-emerald-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Search className="h-8 w-8 text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-900 mb-3">Research Assistant</h2>
+              <p className="text-gray-600 mb-6">
+                Open the integrated research agent for paper search, topic explanation, summaries, and concept graphs
+              </p>
+              <button
+                onClick={onOpenResearchAssistant}
+                disabled={loading}
+                className="btn-success w-full flex items-center justify-center"
+              >
+                Explore Research
+                <ArrowRight className="ml-2 h-5 w-5" />
               </button>
             </div>
           </div>

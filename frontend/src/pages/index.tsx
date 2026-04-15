@@ -3,6 +3,7 @@ import ThesisSelector from '../components/ThesisSelector';
 import QuestionnaireForm from '../components/QuestionnaireForm';
 import TimelineDisplay from '../components/TimelineDisplay';
 import BrainstormingChat from '../components/BrainstormingChat';
+import ResearchAssistantChat from '../components/ResearchAssistantChat';
 import { 
   UserQuestionnaireData, 
   TimelineData, 
@@ -12,7 +13,7 @@ import {
   getThesisProject 
 } from '../services/api';
 
-type ViewType = 'selector' | 'brainstorming' | 'questionnaire' | 'timeline';
+type ViewType = 'selector' | 'brainstorming' | 'questionnaire' | 'timeline' | 'research_assistant';
 
 interface NotionWorkspaceInfo {
   workspace_url: string;
@@ -132,6 +133,10 @@ export default function Home() {
     setExistingNotionWorkspace(null);
   };
 
+  const handleOpenResearchAssistant = () => {
+    setCurrentView('research_assistant');
+  };
+
   const handleTopicFinalized = (topic: string, description: string) => {
     setCurrentView('questionnaire');
     if (typeof window !== 'undefined') {
@@ -217,6 +222,7 @@ export default function Home() {
             <ThesisSelector
               onContinueThesis={handleContinueThesis}
               onStartNew={handleStartNew}
+              onOpenResearchAssistant={handleOpenResearchAssistant}
               loading={loading}
             />
           </div>
@@ -256,6 +262,13 @@ export default function Home() {
             />
           </div>
         ) : null;
+
+      case 'research_assistant':
+        return (
+          <div className="animate-fade-in-up">
+            <ResearchAssistantChat onBack={handleBackToSelector} />
+          </div>
+        );
       
       default:
         return null;
